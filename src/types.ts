@@ -100,6 +100,7 @@ export type GameState = {
   timerEndsAt: string | null;
   remainingSeconds: number;
   pausedRemainingSeconds: number;
+  personalRankingVisible: boolean;
   connectedCount: number;
   capacity: number;
   companies: Company[];

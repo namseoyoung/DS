@@ -31,6 +31,7 @@ type DbSession = {
   previous_status: GameStatus | null;
   timer_ends_at: string | null;
   paused_remaining_seconds: number | null;
+  personal_ranking_visible?: boolean | null;
   capacity: number;
   updated_at: string;
 };
@@ -110,6 +111,7 @@ export type Store = {
   settleYear(changes: Partial<Record<CompanyId, number>>): Promise<void>;
   advanceYear(): Promise<void>;
   retreatYear(): Promise<void>;
+  setPersonalRankingVisible(visible: boolean): Promise<void>;
   realtimeTick(): Promise<void>;
   publishNews(title: string, content: string): Promise<void>;
   publishAnnouncement(content: string): Promise<void>;
@@ -298,6 +300,7 @@ const calculateState = (
     timerEndsAt: session.timer_ends_at,
     remainingSeconds: getRemainingSeconds(session.timer_ends_at),
     pausedRemainingSeconds: session.paused_remaining_seconds ?? 0,
+    personalRankingVisible: Boolean(session.personal_ranking_visible),
     connectedCount: users.filter((user) => user.isOnline).length,
     capacity: session.capacity,
     companies,
@@ -334,6 +337,7 @@ class MemoryStore implements Store {
     previous_status: null,
     timer_ends_at: null,
     paused_remaining_seconds: null,
+    personal_ranking_visible: false,
     capacity: CAPACITY,
     updated_at: now(),
   };
@@ -535,6 +539,11 @@ class MemoryStore implements Store {
     await this.setStatus("YEAR_ENDED");
   }
 
+  async setPersonalRankingVisible(visible: boolean) {
+    this.session.personal_ranking_visible = visible;
+    this.session.updated_at = now();
+  }
+
   async realtimeTick() {
     const totalInvestment = this.investments.reduce(
       (sum, investment) => sum + getInvestmentAmount(investment),
@@ -646,6 +655,7 @@ class MemoryStore implements Store {
       previous_status: null,
       timer_ends_at: null,
       paused_remaining_seconds: null,
+      personal_ranking_visible: false,
       capacity: CAPACITY,
       updated_at: now(),
     };
@@ -696,6 +706,7 @@ class SupabaseStore extends MemoryStore {
       previous_status: null,
       timer_ends_at: null,
       paused_remaining_seconds: null,
+      personal_ranking_visible: false,
       capacity: CAPACITY,
     });
 
@@ -1012,6 +1023,13 @@ class SupabaseStore extends MemoryStore {
         paused_remaining_seconds: null,
         updated_at: now(),
       })
+      .eq("id", DEFAULT_SESSION_ID);
+  }
+
+  async setPersonalRankingVisible(visible: boolean) {
+    await this.supabase
+      .from("game_status")
+      .update({ personal_ranking_visible: visible, updated_at: now() })
       .eq("id", DEFAULT_SESSION_ID);
   }
 

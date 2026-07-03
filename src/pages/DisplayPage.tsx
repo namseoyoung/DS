@@ -1,4 +1,4 @@
-import { Bell, Newspaper, Trophy } from "lucide-react";
+import { Bell, EyeOff, Newspaper, Trophy } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   CartesianGrid,
@@ -56,6 +56,7 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
     });
     return row;
   });
+  const personalRanking = state.participants.slice(5, 10);
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-6 text-white">
@@ -65,7 +66,7 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
             <p className="text-sm font-semibold text-slate-400">
               {connected ? "LIVE" : "RECONNECTING"} · {state.year}년차 · {statusLabel[state.status]}
             </p>
-            <h1 className="mt-2 text-5xl font-bold tracking-normal">인생여(ㄱ)전 투자 전광판</h1>
+            <h1 className="mt-2 text-5xl font-bold tracking-normal">인생여전 투자 전광판</h1>
           </div>
           <div className="grid grid-cols-2 gap-3 text-right">
             <DisplayStat
@@ -85,7 +86,11 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                 <LineChart data={chartData}>
                   <CartesianGrid stroke="#e2e8f0" />
                   <XAxis dataKey="label" hide />
-                  <YAxis domain={["dataMin - 500", "dataMax + 500"]} width={112} tickFormatter={(value) => formatValue(Number(value))} />
+                  <YAxis
+                    domain={["dataMin - 500", "dataMax + 500"]}
+                    width={112}
+                    tickFormatter={(value) => formatValue(Number(value))}
+                  />
                   <Tooltip
                     formatter={(value) => formatValue(Number(value))}
                     labelFormatter={(label) => formatChartLabel(String(label))}
@@ -120,16 +125,21 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                 />
               ))}
             </Panel>
-            <Panel title="개인 자산 TOP5">
-              {state.participants.slice(0, 5).map((user) => (
-                <RankLine
-                  key={user.id}
-                  rank={user.personalRank ?? 0}
-                  name={user.nickname}
-                  main={formatWon(user.totalAsset)}
-                  sub={`${user.companyName} · ${formatPercent(user.returnRate)}`}
-                />
-              ))}
+
+            <Panel title="개인 자산 6-10위">
+              {state.personalRankingVisible ? (
+                personalRanking.map((user) => (
+                  <RankLine
+                    key={user.id}
+                    rank={user.personalRank ?? 0}
+                    name={user.nickname}
+                    main={formatWon(user.totalAsset)}
+                    sub={`${user.companyName} · ${formatPercent(user.returnRate)}`}
+                  />
+                ))
+              ) : (
+                <HiddenRanking />
+              )}
             </Panel>
           </section>
         </div>
@@ -186,7 +196,7 @@ function Ending({ state, connected }: { state: GameState; connected: boolean }) 
           </section>
 
           <section className="rounded-card bg-white p-8 text-slate-950">
-            <p className="text-lg font-semibold text-slate-500">개인 자산 1등</p>
+            <p className="text-lg font-semibold text-slate-500">개인 자산 1위</p>
             <p className="mt-3 text-5xl font-bold">{winner?.nickname ?? "-"}</p>
             <div className="mt-6 grid grid-cols-3 gap-3">
               <Info label="소속 회사" value={winner?.companyName ?? "-"} />
@@ -197,6 +207,20 @@ function Ending({ state, connected }: { state: GameState; connected: boolean }) 
         </div>
       </section>
     </main>
+  );
+}
+
+function HiddenRanking() {
+  return (
+    <div className="grid min-h-[360px] place-items-center rounded-button bg-slate-50 p-6 text-center">
+      <div>
+        <EyeOff className="mx-auto text-slate-300" size={54} aria-hidden />
+        <p className="mt-4 text-2xl font-bold text-slate-950">아직 공개 전입니다</p>
+        <p className="mt-2 text-sm font-semibold text-slate-500">
+          관리자가 개인랭킹 공개 버튼을 누르면 6-10위가 표시됩니다.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -247,15 +271,7 @@ function RankLine({
   );
 }
 
-function Feed({
-  icon,
-  title,
-  items,
-}: {
-  icon: ReactNode;
-  title: string;
-  items: string[];
-}) {
+function Feed({ icon, title, items }: { icon: ReactNode; title: string; items: string[] }) {
   return (
     <section className="rounded-card bg-white/10 p-6">
       <h2 className="flex items-center gap-2 text-xl font-bold">

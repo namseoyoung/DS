@@ -138,6 +138,16 @@ app.post("/api/admin/realtime-tick", async (request, response, next) => {
   }
 });
 
+app.post("/api/admin/personal-ranking-visibility", async (request, response, next) => {
+  try {
+    await runAdminAction(request, response, () =>
+      store.setPersonalRankingVisible(Boolean(request.body.visible)),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/admin/news", async (request, response, next) => {
   try {
     await runAdminAction(request, response, () =>

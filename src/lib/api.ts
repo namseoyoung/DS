@@ -77,6 +77,11 @@ export const api = {
       method: "POST",
       body: adminBody(adminId),
     }),
+  setPersonalRankingVisible: (adminId: string, visible: boolean) =>
+    request<GameState>("/api/admin/personal-ranking-visibility", {
+      method: "POST",
+      body: adminBody(adminId, { visible }),
+    }),
   publishNews: (adminId: string, title: string, content: string) =>
     request<GameState>("/api/admin/news", {
       method: "POST",

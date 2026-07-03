@@ -7,6 +7,7 @@ create table if not exists public.game_status (
   previous_status text,
   timer_ends_at timestamptz,
   paused_remaining_seconds integer,
+  personal_ranking_visible boolean not null default false,
   capacity integer not null default 40,
   updated_at timestamptz not null default now()
 );
@@ -141,6 +142,7 @@ on conflict (id) do update set
   year = excluded.year,
   status = excluded.status,
   capacity = excluded.capacity,
+  personal_ranking_visible = false,
   timer_ends_at = null,
   paused_remaining_seconds = null,
   updated_at = now();

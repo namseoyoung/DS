@@ -1,6 +1,8 @@
 import {
   Bell,
   Clock,
+  Eye,
+  EyeOff,
   Lock,
   Newspaper,
   Pause,
@@ -210,6 +212,11 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
             <Control icon={<SkipForward size={16} />} label="다음 연차" onClick={() => run(() => api.advanceYear(admin.id), "다음 연차로 이동할까요?")} />
             <Control icon={<Play size={16} />} label="4년차 라운드 시작" onClick={() => run(() => api.setStatus(admin.id, "REALTIME_ROUND", Number(duration)))} />
             <Control icon={<RefreshCw size={16} />} label="4년차 가치 갱신" onClick={() => run(() => api.realtimeTick(admin.id))} />
+            <Control
+              icon={state.personalRankingVisible ? <EyeOff size={16} /> : <Eye size={16} />}
+              label={state.personalRankingVisible ? "개인랭킹 숨김" : "개인랭킹 공개"}
+              onClick={() => run(() => api.setPersonalRankingVisible(admin.id, !state.personalRankingVisible))}
+            />
             <Control icon={<Pause size={16} />} label="일시정지" onClick={() => run(() => api.setStatus(admin.id, "PAUSED"))} />
             <Control icon={<Play size={16} />} label="재개" onClick={() => run(() => api.setStatus(admin.id, state.previousStatus ?? "INVESTING"))} />
             <Control icon={<Trophy size={16} />} label="게임 종료" onClick={() => run(() => api.setStatus(admin.id, "FINISHED"), "게임을 종료할까요?")} />
