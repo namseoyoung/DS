@@ -1,0 +1,81 @@
+import { Activity, Building2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { formatPercent, formatWon } from "../utils/format";
+
+type HeaderStatsProps = {
+  nickname: string;
+  companyName: string;
+  cash: number;
+  evaluatedAmount: number;
+  totalAsset: number;
+  returnRate: number;
+  year: number;
+  connected: boolean;
+};
+
+export function HeaderStats({
+  nickname,
+  companyName,
+  cash,
+  evaluatedAmount,
+  totalAsset,
+  returnRate,
+  year,
+  connected,
+}: HeaderStatsProps) {
+  const isPositive = returnRate >= 0;
+  const TrendIcon = isPositive ? TrendingUp : TrendingDown;
+
+  return (
+    <section className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-5 pb-4 pt-4 backdrop-blur">
+      <div className="mx-auto max-w-md">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="flex items-center gap-1 text-sm font-medium text-slate-500">
+              <Building2 size={14} aria-hidden />
+              {companyName} · {year}년차
+            </p>
+            <h1 className="mt-1 text-2xl font-bold text-slate-950">{nickname}</h1>
+          </div>
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-950 text-white">
+            <Wallet size={20} aria-hidden />
+          </div>
+        </div>
+
+        <div className="rounded-card bg-slate-950 p-6 text-white shadow-soft">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-300">총자산</p>
+            <span className="flex items-center gap-1 text-xs text-slate-300">
+              <Activity size={13} aria-hidden />
+              {connected ? "LIVE" : "연결 중"}
+            </span>
+          </div>
+          <strong className="mt-1 block text-3xl font-bold tracking-normal">
+            {formatWon(totalAsset)}
+          </strong>
+
+          <div className="mt-5 grid grid-cols-3 gap-3">
+            <div>
+              <p className="text-xs text-slate-400">현금</p>
+              <p className="mt-1 text-sm font-semibold">{formatWon(cash)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">평가액</p>
+              <p className="mt-1 text-sm font-semibold">{formatWon(evaluatedAmount)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">수익률</p>
+              <p
+                className={`mt-1 flex items-center gap-1 text-sm font-semibold ${
+                  isPositive ? "text-red-400" : "text-blue-400"
+                }`}
+              >
+                <TrendIcon size={15} aria-hidden />
+                {formatPercent(returnRate)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
