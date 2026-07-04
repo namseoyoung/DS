@@ -135,8 +135,7 @@ const getRemainingSeconds = (timerEndsAt: string | null) => {
 const getInvestmentAmount = (investment: DbInvestment) =>
   Number(investment.invested_amount ?? investment.amount ?? 0);
 
-const canWithdrawInStatus = (status: GameStatus) =>
-  status === "INVEST_CLOSED" || status === "SETTLED" || status === "YEAR_ENDED";
+const canWithdrawInStatus = (status: GameStatus) => status !== "FINISHED";
 
 const calculateEvaluatedInvestment = (
   investment: DbInvestment,
@@ -468,24 +467,24 @@ class MemoryStore implements Store {
 
   async withdraw(userId: string, companyId: CompanyId) {
     if (!canWithdrawInStatus(this.session.status)) {
-      throw new Error("?꾩옱???ъ옄湲덉쓣 ?뚯닔?????놁뒿?덈떎.");
+      throw new Error("게임 종료 후에는 투자금을 회수할 수 없습니다.");
     }
 
     const user = this.users.find((item) => item.id === userId);
     const company = this.companies.find((item) => item.id === companyId);
     if (!user || !company || user.role !== "participant") {
-      throw new Error("?뚯닔???뚯썝 ?먮뒗 湲곗뾽??李얠쓣 ???놁뒿?덈떎.");
+      throw new Error("회수할 회원 또는 기업을 찾을 수 없습니다.");
     }
 
     const userInvestments = this.investments.filter(
       (investment) => investment.user_id === userId && investment.company_id === companyId,
     );
     if (userInvestments.length === 0) {
-      throw new Error("?뚯닔???ъ옄湲덉씠 ?놁뒿?덈떎.");
+      throw new Error("회수할 투자금이 없습니다.");
     }
 
     const withdrawalAmount = userInvestments.reduce((sum, investment) => {
-      const valuation = calculateVisibleInvestment(investment, company, false);
+      const valuation = calculateEvaluatedInvestment(investment, company);
       return sum + valuation.evaluatedAmount;
     }, 0);
 
@@ -928,7 +927,7 @@ class SupabaseStore extends MemoryStore {
   async withdraw(userId: string, companyId: CompanyId) {
     const state = await this.getState();
     if (!canWithdrawInStatus(state.status)) {
-      throw new Error("현재는 투자금을 회수할 수 없습니다.");
+      throw new Error("게임 종료 후에는 투자금을 회수할 수 없습니다.");
     }
 
     const user = state.users.find((item) => item.id === userId);
@@ -949,13 +948,12 @@ class SupabaseStore extends MemoryStore {
 
     const withdrawalAmount = Math.round(
       userInvestments.reduce((sum, investment) => {
-        const valuation = calculateVisibleInvestment(
+        const valuation = calculateEvaluatedInvestment(
           investment,
           {
             initial_capital: company.initialCapital,
             current_value: company.currentValue,
           },
-          false,
         );
         return sum + valuation.evaluatedAmount;
       }, 0),
@@ -988,7 +986,9 @@ class SupabaseStore extends MemoryStore {
       year: log.year,
       createdAt: log.created_at,
     };
-  }  async setStatus(status: GameStatus, durationSeconds?: number) {
+  }
+
+  async setStatus(status: GameStatus, durationSeconds?: number) {
     const state = await this.getState();
     const { data: currentSession } = await this.supabase
       .from("game_status")

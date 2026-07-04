@@ -25,13 +25,12 @@ type ParticipantPageProps = {
 const canInvestInStatus = (status: GameState["status"]) =>
   status === "INVESTING" || status === "REALTIME_ROUND";
 
-const canWithdrawInStatus = (status: GameState["status"]) =>
-  status === "INVEST_CLOSED" || status === "SETTLED" || status === "YEAR_ENDED";
+const canWithdrawInStatus = (status: GameState["status"]) => status !== "FINISHED";
 
 const statusMessage: Record<GameState["status"], { title: string; body: string }> = {
   BEFORE_START: {
     title: "게임 시작 전입니다.",
-    body: "관리자가 연봉 지급과 투자 시작을 진행하면 투자가 열립니다.",
+    body: "관리자가 연봉 지급과 투자 시작을 진행하면 투자가 열립니다. 보유 투자는 언제든 회수할 수 있습니다.",
   },
   SALARY_PAID: {
     title: "연봉이 지급되었습니다.",
@@ -39,23 +38,23 @@ const statusMessage: Record<GameState["status"], { title: string; body: string }
   },
   INVESTING: {
     title: "투자 가능 상태입니다.",
-    body: "기업을 선택해 보유 현금 범위 안에서 투자할 수 있습니다.",
+    body: "기업을 선택해 투자할 수 있고, 보유 투자는 현재 기업가치 기준으로 언제든 회수할 수 있습니다.",
   },
   INVEST_CLOSED: {
     title: "투자가 마감되었습니다.",
-    body: "다음 투자 라운드가 열리기 전까지 투자금을 회수할 수 있습니다.",
+    body: "보유 투자는 현재 기업가치 기준으로 회수할 수 있습니다.",
   },
   SETTLED: {
     title: "정산이 완료되었습니다.",
-    body: "정산 결과를 확인하고, 다음 투자 전까지 투자금을 회수할 수 있습니다.",
+    body: "정산 결과를 확인하고, 보유 투자는 현재 기업가치 기준으로 회수할 수 있습니다.",
   },
   YEAR_ENDED: {
     title: "연차가 종료되었습니다.",
-    body: "다음 연차 투자가 열리기 전까지 투자금을 자유롭게 회수할 수 있습니다.",
+    body: "다음 연차를 기다리는 동안에도 보유 투자는 자유롭게 회수할 수 있습니다.",
   },
   REALTIME_ROUND: {
     title: "4년차 실시간 라운드입니다.",
-    body: "실시간 그래프를 보며 마지막 투자를 진행할 수 있습니다.",
+    body: "실시간 그래프를 보며 투자하거나, 그 순간의 기업가치 기준으로 회수할 수 있습니다.",
   },
   PAUSED: {
     title: "게임이 일시정지되었습니다.",
@@ -63,7 +62,7 @@ const statusMessage: Record<GameState["status"], { title: string; body: string }
   },
   FINISHED: {
     title: "게임이 종료되었습니다.",
-    body: "최종 결과는 전광판에서 확인해주세요.",
+    body: "최종 결과가 확정되어 투자금 회수는 잠겼습니다. 전광판에서 결과를 확인해주세요.",
   },
 };
 
