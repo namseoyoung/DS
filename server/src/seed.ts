@@ -39,39 +39,6 @@ export const salaryTable: Record<CompanyId, Record<JobRank, number>> = {
   },
 };
 
-const spongeNicknames = [
-  "스폰지밥",
-  "뚱이",
-  "징징이",
-  "다람이",
-  "집게사장",
-  "플랑크톤",
-  "퐁퐁부인",
-  "진주",
-  "래리",
-  "퍼프선생님",
-  "캐런",
-  "해적패치",
-  "인어맨",
-  "조개소년",
-  "게리",
-  "네모바지",
-  "비키니시티",
-  "해파리왕",
-  "버블버디",
-  "더치맨",
-  "만타레이",
-  "더티버블",
-  "우체부피쉬",
-  "경찰피쉬",
-  "의사피쉬",
-  "아나운서피쉬",
-  "요리사피쉬",
-  "손님피쉬",
-  "선원피쉬",
-  "시장피쉬",
-];
-
 const companyCycle: CompanyId[] = ["sanghyun", "seoyoung", "ain", "donghyun", "yeil"];
 const rankCycle: JobRank[] = ["사원", "대리", "과장", "차장", "부장"];
 
@@ -97,11 +64,12 @@ export const userSeeds: Array<{
   },
   ...Array.from({ length: 30 }, (_, index) => {
     const number = index + 1;
+    const realName = `테스트${number}`;
     return {
       id: `p${String(number).padStart(3, "0")}`,
       password: "1111",
-      nickname: spongeNicknames[index],
-      realName: `테스트${number}`,
+      nickname: realName,
+      realName,
       companyId: companyCycle[index % companyCycle.length],
       rank: rankCycle[index % rankCycle.length],
       cash: 0,
@@ -111,30 +79,29 @@ export const userSeeds: Array<{
 ];
 
 export const isInvestableStatus = (status: GameStatus) =>
-  status === "INVESTING" || status === "REALTIME_ROUND";
+  status === "INVESTING" || status === "REALTIME_ROUND" || status === "ROUND_INVESTING";
 
 export const clampCompanyValue = (value: number) => Math.max(500, Math.round(value));
 
-const clampRate = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
-
 export const calculateRealtimeValue = (
   currentValue: number,
-  totalInvestment: number,
-  companyInvestment: number,
-  totalInvestors: number,
-  companyInvestors: number,
+  allCompanyScores: number[],
+  companyScore: number,
+  recentInvestmentShare: number,
 ) => {
-  if (totalInvestment <= 0 || totalInvestors <= 0) {
+  const totalScore = allCompanyScores.reduce((sum, score) => sum + Math.abs(score), 0);
+
+  if (totalScore <= 0) {
     return clampCompanyValue(currentValue);
   }
 
-  const investmentShare = companyInvestment / totalInvestment;
-  const investorShare = companyInvestors / totalInvestors;
-  const share = investmentShare * 0.65 + investorShare * 0.35;
-  const baseline = 1 / companySeeds.length;
-  const demandPressure = (share - baseline) / baseline;
-  const demandImpactRate = clampRate(demandPressure * 0.0035, -0.0035, 0.008);
+  const rankRates = [0.15, 0.1, 0, -0.1, -0.15];
+  const rank = allCompanyScores.filter((score) => score > companyScore).length;
+  const baseRate = rankRates[Math.min(rank, rankRates.length - 1)] ?? -0.15;
+  const overheatPenalty =
+    recentInvestmentShare >= 0.3
+      ? -Math.min(0.15, 0.1 + Math.max(0, recentInvestmentShare - 0.3) * 0.25)
+      : 0;
 
-  return clampCompanyValue(currentValue * (1 + demandImpactRate));
+  return clampCompanyValue(currentValue * (1 + baseRate + overheatPenalty));
 };

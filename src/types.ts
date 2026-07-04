@@ -12,6 +12,8 @@ export type GameStatus =
   | "SETTLED"
   | "YEAR_ENDED"
   | "REALTIME_ROUND"
+  | "ROUND_INVESTING"
+  | "ROUND_RESULT"
   | "PAUSED"
   | "FINISHED";
 
@@ -51,7 +53,6 @@ export type Holding = {
 
 export type User = {
   id: string;
-  nickname: string;
   realName: string;
   companyId: CompanyId;
   companyName: string;
@@ -100,7 +101,8 @@ export type GameState = {
   timerEndsAt: string | null;
   remainingSeconds: number;
   pausedRemainingSeconds: number;
-  personalRankingVisible: boolean;
+  currentRound: number;
+  maxRounds: number;
   connectedCount: number;
   capacity: number;
   companies: Company[];

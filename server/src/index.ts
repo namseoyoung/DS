@@ -20,8 +20,13 @@ const store = createStore();
 app.use(cors({ origin: clientOrigin }));
 app.use(express.json());
 
-const broadcastState = async () => {
+const withConnectedCount = async () => {
   const state = await store.getState();
+  return { ...state, connectedCount: io.sockets.sockets.size };
+};
+
+const broadcastState = async () => {
+  const state = await withConnectedCount();
   io.emit("game:state", state);
   return state;
 };
@@ -50,7 +55,7 @@ app.get("/health", (_request, response) => response.json({ ok: true }));
 
 app.get("/api/state", async (_request, response, next) => {
   try {
-    response.json(await store.getState());
+    response.json(await withConnectedCount());
   } catch (error) {
     next(error);
   }
@@ -152,16 +157,6 @@ app.post("/api/admin/realtime-tick", async (request, response, next) => {
   }
 });
 
-app.post("/api/admin/personal-ranking-visibility", async (request, response, next) => {
-  try {
-    await runAdminAction(request, response, () =>
-      store.setPersonalRankingVisible(Boolean(request.body.visible)),
-    );
-  } catch (error) {
-    next(error);
-  }
-});
-
 app.post("/api/admin/news", async (request, response, next) => {
   try {
     await runAdminAction(request, response, () =>
@@ -209,7 +204,10 @@ app.post("/api/admin/reset", async (request, response, next) => {
 });
 
 io.on("connection", async (socket) => {
-  socket.emit("game:state", await store.getState());
+  io.emit("game:state", await withConnectedCount());
+  socket.on("disconnect", () => {
+    void broadcastState();
+  });
 });
 
 app.use(
@@ -229,18 +227,11 @@ const timerGuards = new Map<
   string,
   { sent60: boolean; sent30: boolean; closed: boolean }
 >();
-let lastRealtimeTickAt = 0;
-
 setInterval(async () => {
   try {
     const state = await store.getState();
-    if (state.status === "REALTIME_ROUND" && Date.now() - lastRealtimeTickAt >= 10_000) {
-      lastRealtimeTickAt = Date.now();
-      await store.realtimeTick();
-      await broadcastState();
-    }
 
-    if (!state.timerEndsAt || !isInvestableStatus(state.status)) return;
+    if (!state.timerEndsAt) return;
 
     const guard = timerGuards.get(state.timerEndsAt) ?? {
       sent60: false,
@@ -249,13 +240,13 @@ setInterval(async () => {
     };
     timerGuards.set(state.timerEndsAt, guard);
 
-    if (state.remainingSeconds <= 60 && state.remainingSeconds > 30 && !guard.sent60) {
+    if (isInvestableStatus(state.status) && state.remainingSeconds <= 60 && state.remainingSeconds > 30 && !guard.sent60) {
       guard.sent60 = true;
       await store.publishAnnouncement("투자가 1분 후 마감됩니다!");
       await broadcastState();
     }
 
-    if (state.remainingSeconds <= 30 && state.remainingSeconds > 0 && !guard.sent30) {
+    if (isInvestableStatus(state.status) && state.remainingSeconds <= 30 && state.remainingSeconds > 0 && !guard.sent30) {
       guard.sent30 = true;
       await store.publishAnnouncement("투자가 30초 후 마감됩니다!");
       await broadcastState();
@@ -263,12 +254,21 @@ setInterval(async () => {
 
     if (state.remainingSeconds <= 0 && !guard.closed) {
       guard.closed = true;
-      await store.publishAnnouncement("투자가 종료되었습니다.");
-      await store.setStatus("INVEST_CLOSED");
-      if (state.year === 4) {
-        await store.setStatus("FINISHED");
-      } else {
+      if (state.status === "ROUND_INVESTING") {
+        await store.publishAnnouncement(`${state.currentRound}라운드 투자 결과가 공개되었습니다.`);
+        await store.realtimeTick();
+        await store.setStatus("ROUND_RESULT", 20);
+      } else if (state.status === "ROUND_RESULT") {
+        await store.withdrawAllRoundInvestments();
+        await store.publishAnnouncement(`${state.currentRound}라운드 투자금이 전액 회수되었습니다.`);
+        await store.advanceRound();
+      } else if (isInvestableStatus(state.status)) {
+        await store.publishAnnouncement("투자가 종료되었습니다.");
+        await store.setStatus("INVEST_CLOSED");
         await store.settleYear({});
+        if (state.year === 4) {
+          await store.setStatus("FINISHED");
+        }
       }
       await broadcastState();
     }

@@ -1,4 +1,4 @@
-﻿import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
   Announcement,
   Company,
@@ -31,7 +31,8 @@ type DbSession = {
   previous_status: GameStatus | null;
   timer_ends_at: string | null;
   paused_remaining_seconds: number | null;
-  personal_ranking_visible?: boolean | null;
+  current_round?: number | null;
+  max_rounds?: number | null;
   capacity: number;
   updated_at: string;
 };
@@ -112,13 +113,14 @@ export type Store = {
   settleYear(changes: Partial<Record<CompanyId, number>>): Promise<void>;
   advanceYear(): Promise<void>;
   retreatYear(): Promise<void>;
-  setPersonalRankingVisible(visible: boolean): Promise<void>;
+  advanceRound(): Promise<void>;
+  withdrawAllRoundInvestments(): Promise<void>;
   realtimeTick(): Promise<void>;
   publishNews(title: string, content: string): Promise<void>;
   publishAnnouncement(content: string): Promise<void>;
   updateUser(
     userId: string,
-    patch: Partial<Pick<User, "nickname" | "realName" | "companyId" | "rank" | "cash">>,
+    patch: Partial<Pick<User, "realName" | "companyId" | "rank" | "cash">>,
   ): Promise<void>;
   updateCompany(
     companyId: CompanyId,
@@ -132,18 +134,18 @@ const getRemainingSeconds = (timerEndsAt: string | null) => {
   return Math.max(0, Math.ceil((Date.parse(timerEndsAt) - Date.now()) / 1000));
 };
 
+const ROUND_INVEST_SECONDS = 60;
+const ROUND_RESULT_SECONDS = 20;
+const MAX_ROUNDS = 10;
+
+const isTimedPlayStatus = (status: GameStatus) =>
+  status === "INVESTING" ||
+  status === "REALTIME_ROUND" ||
+  status === "ROUND_INVESTING" ||
+  status === "ROUND_RESULT";
+
 const getInvestmentAmount = (investment: DbInvestment) =>
   Number(investment.invested_amount ?? investment.amount ?? 0);
-
-const canWithdrawInStatus = (status: GameStatus) => status !== "FINISHED";
-
-const getUniqueInvestorCount = (investments: DbInvestment[]) =>
-  new Set(investments.map((investment) => investment.user_id)).size;
-
-const calculateAssetReturnRate = (totalAsset: number, baselineAsset: number) => {
-  if (baselineAsset <= 0) return 0;
-  return ((totalAsset - baselineAsset) / baselineAsset) * 100;
-};
 
 const calculateEvaluatedInvestment = (
   investment: DbInvestment,
@@ -174,6 +176,47 @@ const calculateVisibleInvestment = (
   return { investedAmount, evaluatedAmount, profitRate };
 };
 
+const getRealtimeOrderScore = (
+  logs: DbLog[],
+  companyId: CompanyId,
+  year: number,
+  since: string | null,
+) => {
+  const companyLogs = logs.filter((log) => {
+    if (log.year !== year || log.company_id !== companyId) return false;
+    if (log.action_type !== "INVEST" && log.action_type !== "WITHDRAW") return false;
+    if (since && Date.parse(log.created_at) <= Date.parse(since)) return false;
+    return true;
+  });
+
+  const buyLogs = companyLogs.filter((log) => log.action_type === "INVEST");
+  const sellLogs = companyLogs.filter((log) => log.action_type === "WITHDRAW");
+  const buyAmount = buyLogs.reduce((sum, log) => sum + log.amount, 0);
+  const sellAmount = sellLogs.reduce((sum, log) => sum + log.amount, 0);
+  const buyInvestors = new Set(buyLogs.map((log) => log.user_id)).size;
+  const sellInvestors = new Set(sellLogs.map((log) => log.user_id)).size;
+
+  return (Math.sqrt(buyAmount) - Math.sqrt(sellAmount)) * 0.7 + (buyInvestors - sellInvestors) * 30;
+};
+
+const getRecentInvestmentAmount = (
+  logs: DbLog[],
+  companyId: CompanyId,
+  year: number,
+  windowMs = 60_000,
+) => {
+  const cutoff = Date.now() - windowMs;
+  return logs
+    .filter(
+      (log) =>
+        log.year === year &&
+        log.company_id === companyId &&
+        log.action_type === "INVEST" &&
+        Date.parse(log.created_at) >= cutoff,
+    )
+    .reduce((sum, log) => sum + log.amount, 0);
+};
+
 const calculateCompanyScore = (company: Company) => company.currentValue + company.memberAverageAsset * 0;
 
 const calculateState = (
@@ -186,7 +229,7 @@ const calculateState = (
   news: NewsItem[],
   announcements: Announcement[],
 ): GameState => {
-  const useRealtimeValuation = session.year === 4 && session.status === "REALTIME_ROUND";
+  const useRealtimeValuation = session.year === 4;
   const companiesWithoutRank = companiesRaw.map<Company>((company) => {
     const totalInvestment = investments
       .filter((investment) => investment.company_id === company.id)
@@ -221,7 +264,7 @@ const calculateState = (
     };
   });
 
-    const usersWithoutRank = usersRaw.map<User>((user) => {
+  const usersWithoutRank = usersRaw.map<User>((user) => {
     const companyName =
       companiesWithoutRank.find((company) => company.id === user.company_id)?.name ?? user.company_id;
     const holdings: Holding[] = companiesWithoutRank.map((company) => {
@@ -260,11 +303,9 @@ const calculateState = (
     const investedAmount = holdings.reduce((sum, holding) => sum + holding.investedAmount, 0);
     const evaluatedAmount = holdings.reduce((sum, holding) => sum + holding.evaluatedAmount, 0);
     const totalAsset = user.cash + evaluatedAmount;
-    const baselineAsset = Number(user.total_asset ?? 0) > 0 ? Number(user.total_asset) : totalAsset;
 
     return {
       id: user.id,
-      nickname: user.nickname,
       realName: user.real_name,
       companyId: user.company_id,
       companyName,
@@ -273,7 +314,8 @@ const calculateState = (
       investedAmount,
       evaluatedAmount,
       totalAsset,
-      returnRate: calculateAssetReturnRate(totalAsset, baselineAsset),
+      returnRate:
+        investedAmount === 0 ? 0 : ((evaluatedAmount - investedAmount) / investedAmount) * 100,
       isOnline: user.is_online,
       role: user.role,
       holdings,
@@ -311,7 +353,8 @@ const calculateState = (
     timerEndsAt: session.timer_ends_at,
     remainingSeconds: getRemainingSeconds(session.timer_ends_at),
     pausedRemainingSeconds: session.paused_remaining_seconds ?? 0,
-    personalRankingVisible: Boolean(session.personal_ranking_visible),
+    currentRound: session.current_round ?? 1,
+    maxRounds: session.max_rounds ?? MAX_ROUNDS,
     connectedCount: users.filter((user) => user.isOnline).length,
     capacity: session.capacity,
     companies,
@@ -348,7 +391,8 @@ class MemoryStore implements Store {
     previous_status: null,
     timer_ends_at: null,
     paused_remaining_seconds: null,
-    personal_ranking_visible: false,
+    current_round: 1,
+    max_rounds: MAX_ROUNDS,
     capacity: CAPACITY,
     updated_at: now(),
   };
@@ -386,7 +430,7 @@ class MemoryStore implements Store {
       this.users = userSeeds.map((user) => ({
         id: user.id,
         password: user.password,
-        nickname: user.nickname,
+        nickname: user.realName,
         real_name: user.realName,
         company_id: user.companyId,
         rank: user.rank,
@@ -412,7 +456,7 @@ class MemoryStore implements Store {
 
   async login(id: string, password: string) {
     const user = this.users.find((item) => item.id === id && item.password === password);
-    if (!user) throw new Error("?꾩씠???먮뒗 鍮꾨?踰덊샇媛 ?щ컮瑜댁? ?딆뒿?덈떎.");
+    if (!user) throw new Error("아이디 또는 비밀번호가 올바르지 않습니다.");
     user.is_online = true;
     this.session.updated_at = now();
     const state = await this.getState();
@@ -421,16 +465,16 @@ class MemoryStore implements Store {
 
   async invest(userId: string, companyId: CompanyId, amount: number) {
     if (!isInvestableStatus(this.session.status)) {
-      throw new Error("?꾩옱???ъ옄 媛???곹깭媛 ?꾨떃?덈떎.");
+      throw new Error("현재는 투자 가능 상태가 아닙니다.");
     }
 
     const user = this.users.find((item) => item.id === userId);
     const company = this.companies.find((item) => item.id === companyId);
     if (!user || !company || user.role !== "participant") {
-      throw new Error("?ъ옄???뚯썝 ?먮뒗 湲곗뾽??李얠쓣 ???놁뒿?덈떎.");
+      throw new Error("투자할 회원 또는 기업을 찾을 수 없습니다.");
     }
     if (amount <= 0 || amount > user.cash) {
-      throw new Error("蹂댁쑀 ?꾧툑蹂대떎 留롮씠 ?ъ옄?????놁뒿?덈떎.");
+      throw new Error("보유 현금보다 많이 투자할 수 없습니다.");
     }
 
     user.cash -= amount;
@@ -474,7 +518,7 @@ class MemoryStore implements Store {
   }
 
   async withdraw(userId: string, companyId: CompanyId) {
-    if (!canWithdrawInStatus(this.session.status)) {
+    if (this.session.status === "FINISHED") {
       throw new Error("게임 종료 후에는 투자금을 회수할 수 없습니다.");
     }
 
@@ -485,23 +529,43 @@ class MemoryStore implements Store {
     }
 
     const userInvestments = this.investments.filter(
-      (investment) => investment.user_id === userId && investment.company_id === companyId,
+      (investment) =>
+        investment.user_id === user.id &&
+        investment.company_id === company.id &&
+        getInvestmentAmount(investment) > 0,
     );
     if (userInvestments.length === 0) {
       throw new Error("회수할 투자금이 없습니다.");
     }
 
-    const withdrawalAmount = userInvestments.reduce((sum, investment) => {
-      const valuation = calculateEvaluatedInvestment(investment, company);
-      return sum + valuation.evaluatedAmount;
-    }, 0);
-
-    user.cash += Math.round(withdrawalAmount);
-    this.investments = this.investments.filter(
-      (investment) => !(investment.user_id === userId && investment.company_id === companyId),
+    const valuation = userInvestments.reduce(
+      (sum, investment) => {
+        const item = calculateVisibleInvestment(
+          investment,
+          {
+            initial_capital: company.initial_capital,
+            current_value: company.current_value,
+          },
+          this.session.year === 4,
+        );
+        return {
+          investedAmount: sum.investedAmount + item.investedAmount,
+          evaluatedAmount: sum.evaluatedAmount + item.evaluatedAmount,
+        };
+      },
+      { investedAmount: 0, evaluatedAmount: 0 },
     );
+    const payout = Math.max(0, Math.floor(valuation.evaluatedAmount));
 
-    const log = this.addLog(user.id, user.real_name, company.id, company.name, Math.round(withdrawalAmount), "WITHDRAW");
+    user.cash += payout;
+    company.total_investment = Math.max(
+      0,
+      Number(company.total_investment ?? 0) - valuation.investedAmount,
+    );
+    const withdrawnIds = new Set(userInvestments.map((investment) => investment.id));
+    this.investments = this.investments.filter((investment) => !withdrawnIds.has(investment.id));
+
+    const log = this.addLog(user.id, user.real_name, company.id, company.name, payout, "WITHDRAW");
     this.session.updated_at = now();
     return {
       logId: log.id,
@@ -518,23 +582,48 @@ class MemoryStore implements Store {
 
   async setStatus(status: GameStatus, durationSeconds?: number) {
     const remainingSeconds = getRemainingSeconds(this.session.timer_ends_at);
+    const previousStatus = this.session.status;
     this.session.previous_status = this.session.status;
     this.session.status = status;
+    if (status === "REALTIME_ROUND" || status === "ROUND_INVESTING") {
+      this.session.year = 4;
+      if (status === "ROUND_INVESTING" && previousStatus !== "ROUND_RESULT") {
+        this.session.current_round = 1;
+        this.session.max_rounds = MAX_ROUNDS;
+      }
+      const createdAt = now();
+      for (const company of this.companies) {
+        const hasYearOpeningPoint = this.history.some(
+          (point) => point.company_id === company.id && point.year === 4 && point.tick === 0,
+        );
+        if (!hasYearOpeningPoint) {
+          this.history.push({
+            company_id: company.id,
+            tick: 0,
+            year: 4,
+            value: company.current_value,
+            change_rate: 0,
+            created_at: createdAt,
+            recorded_at: createdAt,
+          });
+        }
+      }
+    }
     if (status === "PAUSED") {
       this.session.paused_remaining_seconds = remainingSeconds;
       this.session.timer_ends_at = null;
-    } else if (durationSeconds && (status === "INVESTING" || status === "REALTIME_ROUND")) {
+    } else if (durationSeconds && isTimedPlayStatus(status)) {
       this.session.timer_ends_at = new Date(Date.now() + durationSeconds * 1000).toISOString();
       this.session.paused_remaining_seconds = null;
     } else if (
-      (status === "INVESTING" || status === "REALTIME_ROUND") &&
+      isTimedPlayStatus(status) &&
       this.session.paused_remaining_seconds
     ) {
       this.session.timer_ends_at = new Date(
         Date.now() + this.session.paused_remaining_seconds * 1000,
       ).toISOString();
       this.session.paused_remaining_seconds = null;
-    } else if (status === "INVEST_CLOSED" || status === "FINISHED") {
+    } else if (status === "INVEST_CLOSED" || status === "FINISHED" || status === "SETTLED") {
       this.session.timer_ends_at = null;
       this.session.paused_remaining_seconds = null;
     }
@@ -552,10 +641,6 @@ class MemoryStore implements Store {
   }
 
   async settleYear(changes: Partial<Record<CompanyId, number>>) {
-    if (this.session.year >= 4) {
-      throw new Error("4년차는 변동률 정산을 사용하지 않고 실시간 투자금만 반영합니다.");
-    }
-
     for (const company of this.companies) {
       const change = changes[company.id] ?? 0;
       const nextValue = clampCompanyValue(company.current_value * (1 + change / 100));
@@ -585,55 +670,76 @@ class MemoryStore implements Store {
   }
 
   async advanceYear() {
-    const state = await this.getState();
-    for (const participant of state.participants) {
-      const user = this.users.find((item) => item.id === participant.id);
-      if (user) {
-        user.total_asset = participant.totalAsset;
-        user.evaluated_amount = participant.evaluatedAmount;
-        user.profit_rate = participant.returnRate;
-      }
-    }
     this.session.year = Math.min(4, this.session.year + 1);
-    await this.setStatus(this.session.year === 4 ? "REALTIME_ROUND" : "YEAR_ENDED");
+    await this.setStatus(this.session.year === 4 ? "ROUND_INVESTING" : "YEAR_ENDED", this.session.year === 4 ? ROUND_INVEST_SECONDS : undefined);
   }
 
   async retreatYear() {
     if (this.session.year <= 1) {
-      throw new Error("?대? 1?꾩감?낅땲??");
+      throw new Error("이미 1년차입니다.");
     }
     this.session.year = Math.max(1, this.session.year - 1);
     await this.setStatus("YEAR_ENDED");
   }
 
-  async setPersonalRankingVisible(visible: boolean) {
-    this.session.personal_ranking_visible = visible;
+  async advanceRound() {
+    const currentRound = this.session.current_round ?? 1;
+    const maxRounds = this.session.max_rounds ?? MAX_ROUNDS;
+    if (currentRound >= maxRounds) {
+      await this.setStatus("FINISHED");
+      return;
+    }
+    this.session.current_round = currentRound + 1;
+    await this.setStatus("ROUND_INVESTING", ROUND_INVEST_SECONDS);
+  }
+
+  async withdrawAllRoundInvestments() {
+    const roundInvestments = this.investments.filter(
+      (investment) => investment.year === this.session.year && getInvestmentAmount(investment) > 0,
+    );
+    for (const investment of roundInvestments) {
+      const user = this.users.find((item) => item.id === investment.user_id);
+      const company = this.companies.find((item) => item.id === investment.company_id);
+      if (!user || !company) continue;
+      const valuation = calculateEvaluatedInvestment(investment, company);
+      const payout = Math.max(0, Math.floor(valuation.evaluatedAmount));
+      user.cash += payout;
+      company.total_investment = Math.max(
+        0,
+        Number(company.total_investment ?? 0) - valuation.investedAmount,
+      );
+      this.addLog(user.id, user.real_name, company.id, company.name, payout, "WITHDRAW");
+    }
+    const withdrawnIds = new Set(roundInvestments.map((investment) => investment.id));
+    this.investments = this.investments.filter((investment) => !withdrawnIds.has(investment.id));
     this.session.updated_at = now();
   }
 
   async realtimeTick() {
-    const realtimeInvestments = this.investments.filter(
-      (investment) => investment.year === this.session.year,
-    );
-    const totalInvestment = realtimeInvestments.reduce(
-      (sum, investment) => sum + getInvestmentAmount(investment),
-      0,
-    );
-    const totalInvestors = getUniqueInvestorCount(realtimeInvestments);
-    for (const company of this.companies) {
-      const companyInvestments = realtimeInvestments.filter(
-        (investment) => investment.company_id === company.id,
+    const orderScores = this.companies.map((company) => {
+      const companyHistory = this.history.filter(
+        (point) => point.company_id === company.id && point.year === this.session.year,
       );
-      const companyInvestment = companyInvestments
-        .reduce((sum, investment) => sum + getInvestmentAmount(investment), 0);
-      const companyInvestors = getUniqueInvestorCount(companyInvestments);
+      const lastPoint = companyHistory[companyHistory.length - 1];
+      return getRealtimeOrderScore(
+        this.logs,
+        company.id,
+        this.session.year,
+        lastPoint?.recorded_at ?? lastPoint?.created_at ?? null,
+      );
+    });
+    const recentInvestmentAmounts = this.companies.map((company) =>
+      getRecentInvestmentAmount(this.logs, company.id, this.session.year),
+    );
+    const totalRecentInvestment = recentInvestmentAmounts.reduce((sum, amount) => sum + amount, 0);
+
+    for (const [index, company] of this.companies.entries()) {
       const tick = this.history.filter((point) => point.company_id === company.id).length;
       const nextValue = calculateRealtimeValue(
         company.current_value,
-        totalInvestment,
-        companyInvestment,
-        totalInvestors,
-        companyInvestors,
+        orderScores,
+        orderScores[index] ?? 0,
+        totalRecentInvestment > 0 ? (recentInvestmentAmounts[index] ?? 0) / totalRecentInvestment : 0,
       );
       company.previous_value = company.current_value;
       company.current_value = nextValue;
@@ -666,11 +772,10 @@ class MemoryStore implements Store {
 
   async updateUser(
     userId: string,
-    patch: Partial<Pick<User, "nickname" | "realName" | "companyId" | "rank" | "cash">>,
+    patch: Partial<Pick<User, "realName" | "companyId" | "rank" | "cash">>,
   ) {
     const user = this.users.find((item) => item.id === userId);
-    if (!user || user.role !== "participant") throw new Error("?섏젙???뚯썝??李얠쓣 ???놁뒿?덈떎.");
-    if (patch.nickname !== undefined) user.nickname = patch.nickname;
+    if (!user || user.role !== "participant") throw new Error("수정할 회원을 찾을 수 없습니다.");
     if (patch.realName !== undefined) user.real_name = patch.realName;
     if (patch.companyId !== undefined) user.company_id = patch.companyId;
     if (patch.rank !== undefined) user.rank = patch.rank;
@@ -683,7 +788,7 @@ class MemoryStore implements Store {
     patch: Partial<Pick<Company, "name" | "initialCapital" | "currentValue">>,
   ) {
     const company = this.companies.find((item) => item.id === companyId);
-    if (!company) throw new Error("?섏젙??湲곗뾽??李얠쓣 ???놁뒿?덈떎.");
+    if (!company) throw new Error("수정할 기업을 찾을 수 없습니다.");
     if (patch.name !== undefined) company.name = patch.name;
     if (patch.initialCapital !== undefined) {
       company.initial_capital = Math.max(1, Math.floor(Number(patch.initialCapital)));
@@ -730,7 +835,8 @@ class MemoryStore implements Store {
       previous_status: null,
       timer_ends_at: null,
       paused_remaining_seconds: null,
-      personal_ranking_visible: false,
+      current_round: 1,
+      max_rounds: MAX_ROUNDS,
       capacity: CAPACITY,
       updated_at: now(),
     };
@@ -781,7 +887,8 @@ class SupabaseStore extends MemoryStore {
       previous_status: null,
       timer_ends_at: null,
       paused_remaining_seconds: null,
-      personal_ranking_visible: false,
+      current_round: 1,
+      max_rounds: MAX_ROUNDS,
       capacity: CAPACITY,
     });
 
@@ -813,7 +920,7 @@ class SupabaseStore extends MemoryStore {
         userSeeds.map((user) => ({
           id: user.id,
           password: user.password,
-          nickname: user.nickname,
+          nickname: user.realName,
           real_name: user.realName,
           company_id: user.companyId,
           rank: user.rank,
@@ -851,7 +958,7 @@ class SupabaseStore extends MemoryStore {
     ]);
 
     if (!session || !companies || !users || !investments || !history || !logs) {
-      throw new Error("Supabase ?곹깭瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??");
+      throw new Error("Supabase 상태를 불러오지 못했습니다.");
     }
 
     return calculateState(
@@ -877,21 +984,21 @@ class SupabaseStore extends MemoryStore {
       .eq("id", id)
       .eq("password", password)
       .single();
-    if (!user) throw new Error("?꾩씠???먮뒗 鍮꾨?踰덊샇媛 ?щ컮瑜댁? ?딆뒿?덈떎.");
+    if (!user) throw new Error("아이디 또는 비밀번호가 올바르지 않습니다.");
     await this.supabase.from("users").update({ is_online: true }).eq("id", id);
     return (await this.getState()).users.find((item) => item.id === id)!;
   }
 
   async invest(userId: string, companyId: CompanyId, amount: number) {
     const state = await this.getState();
-    if (!isInvestableStatus(state.status)) throw new Error("?꾩옱???ъ옄 媛???곹깭媛 ?꾨떃?덈떎.");
+    if (!isInvestableStatus(state.status)) throw new Error("현재는 투자 가능 상태가 아닙니다.");
     const user = state.users.find((item) => item.id === userId);
     const company = state.companies.find((item) => item.id === companyId);
     if (!user || !company || user.role !== "participant") {
-      throw new Error("?ъ옄???뚯썝 ?먮뒗 湲곗뾽??李얠쓣 ???놁뒿?덈떎.");
+      throw new Error("투자할 회원 또는 기업을 찾을 수 없습니다.");
     }
     if (amount <= 0 || amount > user.cash) {
-      throw new Error("蹂댁쑀 ?꾧툑蹂대떎 留롮씠 ?ъ옄?????놁뒿?덈떎.");
+      throw new Error("보유 현금보다 많이 투자할 수 없습니다.");
     }
 
     await this.supabase.from("users").update({ cash: user.cash - amount }).eq("id", userId);
@@ -952,10 +1059,9 @@ class SupabaseStore extends MemoryStore {
     };
   }
 
-
   async withdraw(userId: string, companyId: CompanyId) {
     const state = await this.getState();
-    if (!canWithdrawInStatus(state.status)) {
+    if (state.status === "FINISHED") {
       throw new Error("게임 종료 후에는 투자금을 회수할 수 없습니다.");
     }
 
@@ -970,25 +1076,40 @@ class SupabaseStore extends MemoryStore {
       .select("*")
       .eq("user_id", userId)
       .eq("company_id", companyId);
-    const userInvestments = (investments ?? []) as DbInvestment[];
+    const userInvestments = ((investments ?? []) as DbInvestment[]).filter(
+      (investment) => getInvestmentAmount(investment) > 0,
+    );
     if (userInvestments.length === 0) {
       throw new Error("회수할 투자금이 없습니다.");
     }
 
-    const withdrawalAmount = Math.round(
-      userInvestments.reduce((sum, investment) => {
-        const valuation = calculateEvaluatedInvestment(
+    const valuation = userInvestments.reduce(
+      (sum, investment) => {
+        const item = calculateVisibleInvestment(
           investment,
           {
             initial_capital: company.initialCapital,
             current_value: company.currentValue,
           },
+          state.year === 4,
         );
-        return sum + valuation.evaluatedAmount;
-      }, 0),
+        return {
+          investedAmount: sum.investedAmount + item.investedAmount,
+          evaluatedAmount: sum.evaluatedAmount + item.evaluatedAmount,
+        };
+      },
+      { investedAmount: 0, evaluatedAmount: 0 },
     );
+    const payout = Math.max(0, Math.floor(valuation.evaluatedAmount));
 
-    await this.supabase.from("users").update({ cash: user.cash + withdrawalAmount }).eq("id", userId);
+    await this.supabase.from("users").update({ cash: user.cash + payout }).eq("id", userId);
+    await this.supabase
+      .from("companies")
+      .update({
+        total_investment: Math.max(0, company.totalInvestment - valuation.investedAmount),
+        updated_at: now(),
+      })
+      .eq("id", companyId);
     await this.supabase.from("investments").delete().eq("user_id", userId).eq("company_id", companyId);
     const { data: log } = await this.supabase
       .from("transactions")
@@ -997,7 +1118,7 @@ class SupabaseStore extends MemoryStore {
         user_name: user.realName,
         company_id: companyId,
         company_name: company.name,
-        amount: withdrawalAmount,
+        amount: payout,
         action_type: "WITHDRAW",
         year: state.year,
       })
@@ -1026,21 +1147,28 @@ class SupabaseStore extends MemoryStore {
       .single();
     const previousPausedSeconds =
       (currentSession as DbSession | null)?.paused_remaining_seconds ?? null;
+    const previousStatus = ((currentSession as DbSession | null)?.status ?? state.status) as GameStatus;
     const resumesPausedTimer =
-      (status === "INVESTING" || status === "REALTIME_ROUND") &&
+      isTimedPlayStatus(status) &&
       !durationSeconds &&
       Boolean(previousPausedSeconds);
     await this.supabase
       .from("game_status")
       .update({
+        year: status === "REALTIME_ROUND" || status === "ROUND_INVESTING" ? 4 : state.year,
+        current_round:
+          status === "ROUND_INVESTING" && previousStatus !== "ROUND_RESULT"
+            ? 1
+            : state.currentRound,
+        max_rounds: MAX_ROUNDS,
         previous_status: state.status,
         status,
         timer_ends_at:
-          durationSeconds && (status === "INVESTING" || status === "REALTIME_ROUND")
+          durationSeconds && isTimedPlayStatus(status)
             ? new Date(Date.now() + durationSeconds * 1000).toISOString()
             : resumesPausedTimer
               ? new Date(Date.now() + Number(previousPausedSeconds) * 1000).toISOString()
-              : status === "INVEST_CLOSED" || status === "PAUSED" || status === "FINISHED"
+              : status === "INVEST_CLOSED" || status === "PAUSED" || status === "FINISHED" || status === "SETTLED"
               ? null
               : state.timerEndsAt,
         paused_remaining_seconds:
@@ -1049,12 +1177,32 @@ class SupabaseStore extends MemoryStore {
             : durationSeconds ||
                 resumesPausedTimer ||
                 status === "INVEST_CLOSED" ||
-                status === "FINISHED"
+                status === "FINISHED" ||
+                status === "SETTLED"
               ? null
               : previousPausedSeconds,
         updated_at: now(),
       })
       .eq("id", DEFAULT_SESSION_ID);
+
+    if (status === "REALTIME_ROUND" || status === "ROUND_INVESTING") {
+      const createdAt = now();
+      for (const company of state.companies) {
+        const hasYearOpeningPoint = company.history.some(
+          (point) => point.year === 4 && point.tick === 0,
+        );
+        if (!hasYearOpeningPoint) {
+          await this.supabase.from("company_value_history").insert({
+            company_id: company.id,
+            tick: 0,
+            year: 4,
+            value: company.currentValue,
+            change_rate: 0,
+            recorded_at: createdAt,
+          });
+        }
+      }
+    }
   }
 
   async paySalary() {
@@ -1077,10 +1225,6 @@ class SupabaseStore extends MemoryStore {
 
   async settleYear(changes: Partial<Record<CompanyId, number>>) {
     const state = await this.getState();
-    if (state.year >= 4) {
-      throw new Error("4년차는 변동률 정산을 사용하지 않고 실시간 투자금만 반영합니다.");
-    }
-
     const nextCompanies = new Map<CompanyId, Company>();
     for (const company of state.companies) {
       const change = changes[company.id] ?? 0;
@@ -1140,24 +1284,17 @@ class SupabaseStore extends MemoryStore {
   async advanceYear() {
     const state = await this.getState();
     const nextYear = Math.min(4, state.year + 1);
-    for (const participant of state.participants) {
-      await this.supabase
-        .from("users")
-        .update({
-          total_asset: participant.totalAsset,
-          evaluated_amount: participant.evaluatedAmount,
-          profit_rate: participant.returnRate,
-          updated_at: now(),
-        })
-        .eq("id", participant.id)
-        .eq("role", "participant");
-    }
     await this.supabase
       .from("game_status")
       .update({
         year: nextYear,
+        current_round: nextYear === 4 ? 1 : state.currentRound,
+        max_rounds: MAX_ROUNDS,
         previous_status: state.status,
-        status: nextYear === 4 ? "REALTIME_ROUND" : "YEAR_ENDED",
+        status: nextYear === 4 ? "ROUND_INVESTING" : "YEAR_ENDED",
+        timer_ends_at:
+          nextYear === 4 ? new Date(Date.now() + ROUND_INVEST_SECONDS * 1000).toISOString() : null,
+        paused_remaining_seconds: null,
         updated_at: now(),
       })
       .eq("id", DEFAULT_SESSION_ID);
@@ -1166,7 +1303,7 @@ class SupabaseStore extends MemoryStore {
   async retreatYear() {
     const state = await this.getState();
     if (state.year <= 1) {
-      throw new Error("?대? 1?꾩감?낅땲??");
+      throw new Error("이미 1년차입니다.");
     }
     const previousYear = Math.max(1, state.year - 1);
     await this.supabase
@@ -1182,42 +1319,116 @@ class SupabaseStore extends MemoryStore {
       .eq("id", DEFAULT_SESSION_ID);
   }
 
-  async setPersonalRankingVisible(visible: boolean) {
+  async advanceRound() {
+    const state = await this.getState();
+    if (state.currentRound >= state.maxRounds) {
+      await this.setStatus("FINISHED");
+      return;
+    }
     await this.supabase
       .from("game_status")
-      .update({ personal_ranking_visible: visible, updated_at: now() })
+      .update({
+        current_round: state.currentRound + 1,
+        previous_status: state.status,
+        status: "ROUND_INVESTING",
+        timer_ends_at: new Date(Date.now() + ROUND_INVEST_SECONDS * 1000).toISOString(),
+        paused_remaining_seconds: null,
+        updated_at: now(),
+      })
       .eq("id", DEFAULT_SESSION_ID);
   }
 
-  async realtimeTick() {
+  async withdrawAllRoundInvestments() {
     const state = await this.getState();
     const { data: investments } = await this.supabase
       .from("investments")
       .select("*")
       .eq("year", state.year);
-    const realtimeInvestments = ((investments ?? []) as DbInvestment[]).filter(
-      (investment) => investment.year === state.year,
-    );
-    const totalInvestment = realtimeInvestments.reduce(
-      (sum, investment) => sum + getInvestmentAmount(investment),
-      0,
-    );
-    const totalInvestors = getUniqueInvestorCount(realtimeInvestments);
-    for (const company of state.companies) {
-      const companyInvestments = realtimeInvestments.filter(
-        (investment) => investment.company_id === company.id,
+    const payoutsByUser = new Map<string, number>();
+    const investedByCompany = new Map<CompanyId, number>();
+    const logs: Array<{
+      user_id: string;
+      user_name: string;
+      company_id: CompanyId;
+      company_name: string;
+      amount: number;
+      action_type: "WITHDRAW";
+      year: number;
+    }> = [];
+
+    for (const investment of ((investments ?? []) as DbInvestment[]).filter(
+      (item) => getInvestmentAmount(item) > 0,
+    )) {
+      const user = state.users.find((item) => item.id === investment.user_id);
+      const company = state.companies.find((item) => item.id === investment.company_id);
+      if (!user || !company) continue;
+      const valuation = calculateEvaluatedInvestment(investment, {
+        initial_capital: company.initialCapital,
+        current_value: company.currentValue,
+      });
+      const payout = Math.max(0, Math.floor(valuation.evaluatedAmount));
+      payoutsByUser.set(user.id, (payoutsByUser.get(user.id) ?? 0) + payout);
+      investedByCompany.set(
+        company.id,
+        (investedByCompany.get(company.id) ?? 0) + valuation.investedAmount,
       );
-      const companyInvestment = companyInvestments.reduce(
-        (sum, investment) => sum + getInvestmentAmount(investment),
-        0,
-      );
-      const companyInvestors = getUniqueInvestorCount(companyInvestments);
+      logs.push({
+        user_id: user.id,
+        user_name: user.realName,
+        company_id: company.id,
+        company_name: company.name,
+        amount: payout,
+        action_type: "WITHDRAW",
+        year: state.year,
+      });
+    }
+
+    for (const [userId, payout] of payoutsByUser.entries()) {
+      const user = state.users.find((item) => item.id === userId);
+      if (!user) continue;
+      await this.supabase.from("users").update({ cash: user.cash + payout }).eq("id", userId);
+    }
+    for (const [companyId, investedAmount] of investedByCompany.entries()) {
+      const company = state.companies.find((item) => item.id === companyId);
+      if (!company) continue;
+      await this.supabase
+        .from("companies")
+        .update({
+          total_investment: Math.max(0, company.totalInvestment - investedAmount),
+          updated_at: now(),
+        })
+        .eq("id", companyId);
+    }
+    if (logs.length > 0) {
+      await this.supabase.from("transactions").insert(logs);
+    }
+    await this.supabase.from("investments").delete().eq("year", state.year);
+  }
+
+  async realtimeTick() {
+    const state = await this.getState();
+    const { data: logs } = await this.supabase
+      .from("transactions")
+      .select("*")
+      .eq("year", state.year)
+      .in("action_type", ["INVEST", "WITHDRAW"]);
+    const realtimeLogs = (logs ?? []) as DbLog[];
+    const orderScores = state.companies.map((company) => {
+      const yearHistory = company.history.filter((point) => point.year === state.year);
+      const lastPoint = yearHistory[yearHistory.length - 1];
+      return getRealtimeOrderScore(realtimeLogs, company.id, state.year, lastPoint?.createdAt ?? null);
+    });
+    const recentInvestmentAmounts = state.companies.map((company) =>
+      getRecentInvestmentAmount(realtimeLogs, company.id, state.year),
+    );
+    const totalRecentInvestment = recentInvestmentAmounts.reduce((sum, amount) => sum + amount, 0);
+
+    for (const [index, company] of state.companies.entries()) {
       const nextValue = calculateRealtimeValue(
         company.currentValue,
-        totalInvestment,
-        companyInvestment,
-        totalInvestors,
-        companyInvestors,
+        orderScores,
+        orderScores[index] ?? 0,
+        totalRecentInvestment > 0 ? (recentInvestmentAmounts[index] ?? 0) / totalRecentInvestment : 0,
       );
       await this.supabase
         .from("companies")
@@ -1249,10 +1460,9 @@ class SupabaseStore extends MemoryStore {
 
   async updateUser(
     userId: string,
-    patch: Partial<Pick<User, "nickname" | "realName" | "companyId" | "rank" | "cash">>,
+    patch: Partial<Pick<User, "realName" | "companyId" | "rank" | "cash">>,
   ) {
     const updates: Record<string, unknown> = {};
-    if (patch.nickname !== undefined) updates.nickname = patch.nickname;
     if (patch.realName !== undefined) updates.real_name = patch.realName;
     if (patch.companyId !== undefined) updates.company_id = patch.companyId;
     if (patch.rank !== undefined) updates.rank = patch.rank;
@@ -1268,7 +1478,7 @@ class SupabaseStore extends MemoryStore {
   ) {
     const state = await this.getState();
     const company = state.companies.find((item) => item.id === companyId);
-    if (!company) throw new Error("?섏젙??湲곗뾽??李얠쓣 ???놁뒿?덈떎.");
+    if (!company) throw new Error("수정할 기업을 찾을 수 없습니다.");
 
     const updates: Record<string, unknown> = {};
     if (patch.name !== undefined) updates.name = patch.name;

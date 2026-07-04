@@ -1,5 +1,7 @@
-﻿node_modules/
+node_modules/
 dist/
 server/dist/
 .env
 *.tsbuildinfo
+vite.config.js
+vite.config.d.ts

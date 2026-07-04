@@ -1,8 +1,6 @@
 import {
   Bell,
   Clock,
-  Eye,
-  EyeOff,
   Lock,
   Newspaper,
   Pause,
@@ -32,6 +30,8 @@ const statusLabels: Record<GameStatus, string> = {
   SETTLED: "정산 완료",
   YEAR_ENDED: "연차 종료",
   REALTIME_ROUND: "4년차 실시간 라운드",
+  ROUND_INVESTING: "4년차 라운드 투자",
+  ROUND_RESULT: "4년차 결과 공개",
   PAUSED: "일시정지",
   FINISHED: "종료",
 };
@@ -70,7 +70,6 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
     const todayLogs = state.logs.filter((log) => new Date(log.createdAt).toDateString() === today).length;
     return { invested, averageAsset, todayLogs };
   }, [state]);
-  const usesRealtimeMarket = state?.year === 4;
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -99,35 +98,26 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
     }
   };
 
+  const updateUserField = (
+    user: User,
+    patch: Partial<Pick<User, "realName" | "companyId" | "rank" | "cash">>,
+  ) => {
+    if (!admin) return;
+    run(() => api.updateUser(admin.id, user.id, patch));
+  };
+
   const editUser = (user: User) => {
     const realName = window.prompt("실명", user.realName);
     if (realName === null) return;
-    const companyId = window.prompt(
-      `소속 회사 ID (${state?.companies.map((company) => company.id).join(", ")})`,
-      user.companyId,
-    ) as CompanyId | null;
-    if (companyId === null) return;
-    const rank = window.prompt(`직급 (${jobRanks.join(", ")})`, user.rank) as JobRank | null;
-    if (rank === null) return;
     const cash = window.prompt("보유 현금", String(user.cash));
     if (cash === null) return;
 
     run(() =>
       api.updateUser(admin!.id, user.id, {
         realName,
-        companyId,
-        rank,
         cash: Number(cash),
       }),
     );
-  };
-
-  const updateUserAssignment = (
-    user: User,
-    patch: Partial<Pick<User, "companyId" | "rank">>,
-  ) => {
-    if (!admin) return;
-    run(() => api.updateUser(admin.id, user.id, patch));
   };
 
   const editCompany = (company: Company) => {
@@ -190,6 +180,11 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
             <h1 className="mt-1 text-2xl font-bold">
               {state.year}년차 · {statusLabels[state.status]} · 남은 시간 {formatTimer(state.remainingSeconds)}
             </h1>
+            {state.year === 4 ? (
+              <p className="mt-1 text-sm font-bold text-blue-600">
+                {state.currentRound}/{state.maxRounds} 라운드
+              </p>
+            ) : null}
           </div>
           <a href="/display" className="flex h-[52px] items-center rounded-button bg-blue-600 px-4 text-sm font-bold text-white">
             전광판 열기
@@ -213,16 +208,11 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
             <Control icon={<RefreshCw size={16} />} label="연봉 지급" onClick={() => run(() => api.paySalary(admin.id))} />
             <Control icon={<Play size={16} />} label="투자 시작" onClick={() => run(() => api.setStatus(admin.id, "INVESTING", Number(duration)))} />
             <Control icon={<Clock size={16} />} label="투자 마감" onClick={() => run(() => api.setStatus(admin.id, "INVEST_CLOSED"))} />
-            <Control icon={<Trophy size={16} />} label="정산 확정" disabled={usesRealtimeMarket} onClick={() => run(() => api.settle(admin.id, parseSettlement(settlement)), "정산을 확정할까요?")} />
+            <Control icon={<Trophy size={16} />} label="정산 확정" onClick={() => run(() => api.settle(admin.id, parseSettlement(settlement)), "정산을 확정할까요?")} />
             <Control icon={<SkipBack size={16} />} label="이전 연차" onClick={() => run(() => api.retreatYear(admin.id), "이전 연차로 돌아갈까요?")} />
             <Control icon={<SkipForward size={16} />} label="다음 연차" onClick={() => run(() => api.advanceYear(admin.id), "다음 연차로 이동할까요?")} />
-            <Control icon={<Play size={16} />} label="4년차 라운드 시작" onClick={() => run(() => api.setStatus(admin.id, "REALTIME_ROUND", Number(duration)))} />
-            <Control icon={<RefreshCw size={16} />} label="4년차 가치 갱신" onClick={() => run(() => api.realtimeTick(admin.id))} />
-            <Control
-              icon={state.personalRankingVisible ? <EyeOff size={16} /> : <Eye size={16} />}
-              label={state.personalRankingVisible ? "개인랭킹 숨김" : "개인랭킹 공개"}
-              onClick={() => run(() => api.setPersonalRankingVisible(admin.id, !state.personalRankingVisible))}
-            />
+            <Control icon={<Play size={16} />} label="4년차 라운드 시작" onClick={() => run(() => api.setStatus(admin.id, "ROUND_INVESTING", 60))} />
+            <Control icon={<RefreshCw size={16} />} label="라운드 결과 수동 갱신" onClick={() => run(() => api.realtimeTick(admin.id))} />
             <Control icon={<Pause size={16} />} label="일시정지" onClick={() => run(() => api.setStatus(admin.id, "PAUSED"))} />
             <Control icon={<Play size={16} />} label="재개" onClick={() => run(() => api.setStatus(admin.id, state.previousStatus ?? "INVESTING"))} />
             <Control icon={<Trophy size={16} />} label="게임 종료" onClick={() => run(() => api.setStatus(admin.id, "FINISHED"), "게임을 종료할까요?")} />
@@ -233,23 +223,17 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
               <span className="text-xs font-semibold text-slate-500">투자 시간(초)</span>
               <input value={duration} onChange={(event) => setDuration(event.target.value)} className="mt-1 h-[52px] w-full rounded-button border border-slate-200 px-3" />
             </label>
-            {usesRealtimeMarket ? (
-              <div className="md:col-span-5 rounded-button bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
-                4년차는 변동률 입력을 사용하지 않습니다. 참가자의 실시간 투자금과 투자자 수를 기준으로 가치가 갱신됩니다.
-              </div>
-            ) : (
-              state.companies.map((company) => (
-                <label key={company.id}>
-                  <span className="text-xs font-semibold text-slate-500">{company.name} 변동률</span>
-                  <input
-                    value={settlement[company.id] ?? ""}
-                    onChange={(event) => setSettlement((current) => ({ ...current, [company.id]: event.target.value }))}
-                    className="mt-1 h-[52px] w-full rounded-button border border-slate-200 px-3"
-                    placeholder="+20"
-                  />
-                </label>
-              ))
-            )}
+            {state.companies.map((company) => (
+              <label key={company.id}>
+                <span className="text-xs font-semibold text-slate-500">{company.name} 변동률</span>
+                <input
+                  value={settlement[company.id] ?? ""}
+                  onChange={(event) => setSettlement((current) => ({ ...current, [company.id]: event.target.value }))}
+                  className="mt-1 h-[52px] w-full rounded-button border border-slate-200 px-3"
+                  placeholder="+20"
+                />
+              </label>
+            ))}
           </div>
         </section>
 
@@ -264,6 +248,7 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
                     <th>회사</th>
                     <th>직급</th>
                     <th>현금</th>
+                    <th>평가금</th>
                     <th>총자산</th>
                     <th>수익률</th>
                     <th>접속</th>
@@ -278,9 +263,9 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
                         <select
                           value={user.companyId}
                           onChange={(event) =>
-                            updateUserAssignment(user, { companyId: event.target.value as CompanyId })
+                            updateUserField(user, { companyId: event.target.value as CompanyId })
                           }
-                          className="h-10 rounded-button border border-slate-200 bg-white px-3 font-semibold"
+                          className="h-10 min-w-32 rounded-button border border-slate-200 bg-white px-3 font-semibold outline-none focus:border-blue-600"
                         >
                           {state.companies.map((company) => (
                             <option key={company.id} value={company.id}>
@@ -293,9 +278,9 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
                         <select
                           value={user.rank}
                           onChange={(event) =>
-                            updateUserAssignment(user, { rank: event.target.value as JobRank })
+                            updateUserField(user, { rank: event.target.value as JobRank })
                           }
-                          className="h-10 rounded-button border border-slate-200 bg-white px-3 font-semibold"
+                          className="h-10 min-w-24 rounded-button border border-slate-200 bg-white px-3 font-semibold outline-none focus:border-blue-600"
                         >
                           {jobRanks.map((rank) => (
                             <option key={rank} value={rank}>
@@ -305,6 +290,7 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
                         </select>
                       </td>
                       <td>{formatWon(user.cash)}</td>
+                      <td>{formatWon(user.evaluatedAmount)}</td>
                       <td className="font-bold">{formatWon(user.totalAsset)}</td>
                       <td>{formatPercent(user.returnRate)}</td>
                       <td>{user.isOnline ? "온라인" : "오프라인"}</td>
@@ -441,21 +427,18 @@ function Control({
   icon,
   label,
   danger,
-  disabled,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
   danger?: boolean;
-  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
-      disabled={disabled}
       onClick={onClick}
       className={`flex h-[52px] items-center gap-2 rounded-button px-4 text-sm font-bold ${
-        disabled ? "bg-slate-200 text-slate-400" : danger ? "bg-red-600 text-white" : "bg-blue-600 text-white"
+        danger ? "bg-red-600 text-white" : "bg-blue-600 text-white"
       }`}
     >
       {icon}
@@ -476,11 +459,13 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 function RankItem({
   rank,
   name,
+  subName,
   value,
   caption,
 }: {
   rank: number;
   name: string;
+  subName?: string;
   value: string;
   caption: string;
 }) {
@@ -489,6 +474,7 @@ function RankItem({
       <span className="w-8 text-xl font-bold text-slate-400">{rank}</span>
       <div className="min-w-0 flex-1">
         <p className="truncate font-bold">{name}</p>
+        {subName ? <p className="truncate text-xs font-semibold text-slate-400">{subName}</p> : null}
         <p className="truncate text-sm text-slate-500">{caption}</p>
       </div>
       <span className="font-bold">{value}</span>

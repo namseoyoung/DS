@@ -5,6 +5,7 @@ type HeaderStatsProps = {
   realName: string;
   companyName: string;
   cash: number;
+  evaluatedAmount: number;
   totalAsset: number;
   returnRate: number;
   year: number;
@@ -15,6 +16,7 @@ export function HeaderStats({
   realName,
   companyName,
   cash,
+  evaluatedAmount,
   totalAsset,
   returnRate,
   year,
@@ -51,13 +53,17 @@ export function HeaderStats({
             {formatWon(totalAsset)}
           </strong>
 
-          <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="mt-5 grid grid-cols-3 gap-3">
             <div>
               <p className="text-xs text-slate-400">현금</p>
               <p className="mt-1 text-sm font-semibold">{formatWon(cash)}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">전년 대비</p>
+              <p className="text-xs text-slate-400">평가액</p>
+              <p className="mt-1 text-sm font-semibold">{formatWon(evaluatedAmount)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">수익률</p>
               <p
                 className={`mt-1 flex items-center gap-1 text-sm font-semibold ${
                   isPositive ? "text-red-400" : "text-blue-400"

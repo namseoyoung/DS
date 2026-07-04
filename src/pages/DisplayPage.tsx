@@ -1,4 +1,4 @@
-import { Bell, EyeOff, Newspaper, Trophy } from "lucide-react";
+import { Bell, Newspaper, Trophy } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   CartesianGrid,
@@ -10,7 +10,6 @@ import {
   YAxis,
 } from "recharts";
 import type { GameState } from "../types";
-import { buildMarketChartData } from "../utils/chartData";
 import { formatPercent, formatValue, formatWon } from "../utils/format";
 
 type DisplayPageProps = {
@@ -26,6 +25,8 @@ const statusLabel: Record<GameState["status"], string> = {
   SETTLED: "정산 완료",
   YEAR_ENDED: "연차 종료",
   REALTIME_ROUND: "4년차 실시간 라운드",
+  ROUND_INVESTING: "4년차 라운드 투자",
+  ROUND_RESULT: "4년차 결과 공개",
   PAUSED: "일시정지",
   FINISHED: "종료",
 };
@@ -50,8 +51,13 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
     );
   }
 
-  const chartData = buildMarketChartData(state.companies);
-  const personalRanking = state.participants.slice(5, 10);
+  const chartData = state.companies[0]?.history.map((point, index) => {
+    const row: Record<string, string | number> = { label: `${point.year}년차-${point.tick}` };
+    state.companies.forEach((company) => {
+      row[company.name] = company.history[index]?.value ?? company.currentValue;
+    });
+    return row;
+  });
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-6 text-white">
@@ -60,8 +66,9 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
           <div>
             <p className="text-sm font-semibold text-slate-400">
               {connected ? "LIVE" : "RECONNECTING"} · {state.year}년차 · {statusLabel[state.status]}
+              {state.year === 4 ? ` · ${state.currentRound}/${state.maxRounds} 라운드` : ""}
             </p>
-            <h1 className="mt-2 text-5xl font-bold tracking-normal">인생여전 투자 전광판</h1>
+            <h1 className="mt-2 text-5xl font-bold tracking-normal">인생여(ㄱ)전 투자 전광판</h1>
           </div>
           <div className="grid grid-cols-2 gap-3 text-right">
             <DisplayStat
@@ -81,11 +88,7 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                 <LineChart data={chartData}>
                   <CartesianGrid stroke="#e2e8f0" />
                   <XAxis dataKey="label" hide />
-                  <YAxis
-                    domain={["dataMin - 500", "dataMax + 500"]}
-                    width={112}
-                    tickFormatter={(value) => formatValue(Number(value))}
-                  />
+                  <YAxis domain={["dataMin - 500", "dataMax + 500"]} width={112} tickFormatter={(value) => formatValue(Number(value))} />
                   <Tooltip
                     formatter={(value) => formatValue(Number(value))}
                     labelFormatter={(label) => formatChartLabel(String(label))}
@@ -116,25 +119,20 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                   rank={company.rank}
                   name={company.name}
                   main={formatValue(company.currentValue)}
-                  sub={formatPercent(company.changeRate)}
+                  sub={`${formatPercent(company.changeRate)} · ${formatWon(company.totalInvestment)}`}
                 />
               ))}
             </Panel>
-
-            <Panel title="개인 자산 6-10위">
-              {state.personalRankingVisible ? (
-                personalRanking.map((user) => (
-                  <RankLine
-                    key={user.id}
-                    rank={user.personalRank ?? 0}
-                    name={user.realName}
-                    main={formatWon(user.totalAsset)}
-                    sub={`${user.companyName} · ${formatPercent(user.returnRate)}`}
-                  />
-                ))
-              ) : (
-                <HiddenRanking />
-              )}
+            <Panel title="개인 자산 TOP5">
+              {state.participants.slice(0, 5).map((user) => (
+                <RankLine
+                  key={user.id}
+                  rank={user.personalRank ?? 0}
+                  name={user.realName}
+                  main={formatWon(user.totalAsset)}
+                  sub={`${user.companyName} · ${formatPercent(user.returnRate)}`}
+                />
+              ))}
             </Panel>
           </section>
         </div>
@@ -181,6 +179,7 @@ function Ending({ state, connected }: { state: GameState; connected: boolean }) 
             <p className="mt-3 text-5xl font-bold">{topCompany?.name ?? "-"}</p>
             <div className="mt-6 grid grid-cols-3 gap-3">
               <Info label="최종 가치" value={topCompany ? formatValue(topCompany.currentValue) : "-"} />
+              <Info label="총 투자금" value={topCompany ? formatWon(topCompany.totalInvestment) : "-"} />
               <Info label="소속 평균 자산" value={topCompany ? formatWon(topCompany.memberAverageAsset) : "-"} />
             </div>
             <p className="mt-6 text-sm font-semibold text-slate-500">소속 회원</p>
@@ -190,7 +189,7 @@ function Ending({ state, connected }: { state: GameState; connected: boolean }) 
           </section>
 
           <section className="rounded-card bg-white p-8 text-slate-950">
-            <p className="text-lg font-semibold text-slate-500">개인 자산 1위</p>
+            <p className="text-lg font-semibold text-slate-500">개인 자산 1등</p>
             <p className="mt-3 text-5xl font-bold">{winner?.realName ?? "-"}</p>
             <div className="mt-6 grid grid-cols-3 gap-3">
               <Info label="소속 회사" value={winner?.companyName ?? "-"} />
@@ -201,20 +200,6 @@ function Ending({ state, connected }: { state: GameState; connected: boolean }) 
         </div>
       </section>
     </main>
-  );
-}
-
-function HiddenRanking() {
-  return (
-    <div className="grid min-h-[360px] place-items-center rounded-button bg-slate-50 p-6 text-center">
-      <div>
-        <EyeOff className="mx-auto text-slate-300" size={54} aria-hidden />
-        <p className="mt-4 text-2xl font-bold text-slate-950">아직 공개 전입니다</p>
-        <p className="mt-2 text-sm font-semibold text-slate-500">
-          관리자가 개인랭킹 공개 버튼을 누르면 6-10위가 표시됩니다.
-        </p>
-      </div>
-    </div>
   );
 }
 
@@ -265,7 +250,15 @@ function RankLine({
   );
 }
 
-function Feed({ icon, title, items }: { icon: ReactNode; title: string; items: string[] }) {
+function Feed({
+  icon,
+  title,
+  items,
+}: {
+  icon: ReactNode;
+  title: string;
+  items: string[];
+}) {
   return (
     <section className="rounded-card bg-white/10 p-6">
       <h2 className="flex items-center gap-2 text-xl font-bold">

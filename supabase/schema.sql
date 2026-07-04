@@ -7,10 +7,14 @@ create table if not exists public.game_status (
   previous_status text,
   timer_ends_at timestamptz,
   paused_remaining_seconds integer,
-  personal_ranking_visible boolean not null default false,
+  current_round integer not null default 1,
+  max_rounds integer not null default 10,
   capacity integer not null default 40,
   updated_at timestamptz not null default now()
 );
+
+alter table public.game_status add column if not exists current_round integer not null default 1;
+alter table public.game_status add column if not exists max_rounds integer not null default 10;
 
 create table if not exists public.companies (
   id text primary key,
@@ -136,13 +140,14 @@ create index if not exists idx_company_history_company_tick on public.company_va
 create index if not exists idx_news_created on public.news(created_at desc);
 create index if not exists idx_announcements_created on public.announcements(created_at desc);
 
-insert into public.game_status (id, year, status, capacity)
-values ('main-event', 1, 'BEFORE_START', 40)
+insert into public.game_status (id, year, status, capacity, current_round, max_rounds)
+values ('main-event', 1, 'BEFORE_START', 40, 1, 10)
 on conflict (id) do update set
   year = excluded.year,
   status = excluded.status,
   capacity = excluded.capacity,
-  personal_ranking_visible = false,
+  current_round = excluded.current_round,
+  max_rounds = excluded.max_rounds,
   timer_ends_at = null,
   paused_remaining_seconds = null,
   updated_at = now();
@@ -175,36 +180,36 @@ on conflict do nothing;
 insert into public.users (id, username, password, nickname, real_name, company_id, rank, cash, role)
 values
   ('admin', 'admin', 'admin-2026', '운영자', '관리자', 'sanghyun', '부장', 0, 'admin'),
-  ('p001', 'p001', '1111', '스폰지밥', '테스트1', 'sanghyun', '사원', 0, 'participant'),
-  ('p002', 'p002', '1111', '뚱이', '테스트2', 'seoyoung', '대리', 0, 'participant'),
-  ('p003', 'p003', '1111', '징징이', '테스트3', 'ain', '과장', 0, 'participant'),
-  ('p004', 'p004', '1111', '다람이', '테스트4', 'donghyun', '차장', 0, 'participant'),
-  ('p005', 'p005', '1111', '집게사장', '테스트5', 'yeil', '부장', 0, 'participant'),
-  ('p006', 'p006', '1111', '플랑크톤', '테스트6', 'sanghyun', '사원', 0, 'participant'),
-  ('p007', 'p007', '1111', '퐁퐁부인', '테스트7', 'seoyoung', '대리', 0, 'participant'),
-  ('p008', 'p008', '1111', '진주', '테스트8', 'ain', '과장', 0, 'participant'),
-  ('p009', 'p009', '1111', '래리', '테스트9', 'donghyun', '차장', 0, 'participant'),
-  ('p010', 'p010', '1111', '퍼프선생님', '테스트10', 'yeil', '부장', 0, 'participant'),
-  ('p011', 'p011', '1111', '캐런', '테스트11', 'sanghyun', '사원', 0, 'participant'),
-  ('p012', 'p012', '1111', '해적패치', '테스트12', 'seoyoung', '대리', 0, 'participant'),
-  ('p013', 'p013', '1111', '인어맨', '테스트13', 'ain', '과장', 0, 'participant'),
-  ('p014', 'p014', '1111', '조개소년', '테스트14', 'donghyun', '차장', 0, 'participant'),
-  ('p015', 'p015', '1111', '게리', '테스트15', 'yeil', '부장', 0, 'participant'),
-  ('p016', 'p016', '1111', '네모바지', '테스트16', 'sanghyun', '사원', 0, 'participant'),
-  ('p017', 'p017', '1111', '비키니시티', '테스트17', 'seoyoung', '대리', 0, 'participant'),
-  ('p018', 'p018', '1111', '해파리왕', '테스트18', 'ain', '과장', 0, 'participant'),
-  ('p019', 'p019', '1111', '버블버디', '테스트19', 'donghyun', '차장', 0, 'participant'),
-  ('p020', 'p020', '1111', '더치맨', '테스트20', 'yeil', '부장', 0, 'participant'),
-  ('p021', 'p021', '1111', '만타레이', '테스트21', 'sanghyun', '사원', 0, 'participant'),
-  ('p022', 'p022', '1111', '더티버블', '테스트22', 'seoyoung', '대리', 0, 'participant'),
-  ('p023', 'p023', '1111', '우체부피쉬', '테스트23', 'ain', '과장', 0, 'participant'),
-  ('p024', 'p024', '1111', '경찰피쉬', '테스트24', 'donghyun', '차장', 0, 'participant'),
-  ('p025', 'p025', '1111', '의사피쉬', '테스트25', 'yeil', '부장', 0, 'participant'),
-  ('p026', 'p026', '1111', '아나운서피쉬', '테스트26', 'sanghyun', '사원', 0, 'participant'),
-  ('p027', 'p027', '1111', '요리사피쉬', '테스트27', 'seoyoung', '대리', 0, 'participant'),
-  ('p028', 'p028', '1111', '손님피쉬', '테스트28', 'ain', '과장', 0, 'participant'),
-  ('p029', 'p029', '1111', '선원피쉬', '테스트29', 'donghyun', '차장', 0, 'participant'),
-  ('p030', 'p030', '1111', '시장피쉬', '테스트30', 'yeil', '부장', 0, 'participant')
+  ('p001', 'p001', '1111', '테스트1', '테스트1', 'sanghyun', '사원', 0, 'participant'),
+  ('p002', 'p002', '1111', '테스트2', '테스트2', 'seoyoung', '대리', 0, 'participant'),
+  ('p003', 'p003', '1111', '테스트3', '테스트3', 'ain', '과장', 0, 'participant'),
+  ('p004', 'p004', '1111', '테스트4', '테스트4', 'donghyun', '차장', 0, 'participant'),
+  ('p005', 'p005', '1111', '테스트5', '테스트5', 'yeil', '부장', 0, 'participant'),
+  ('p006', 'p006', '1111', '테스트6', '테스트6', 'sanghyun', '사원', 0, 'participant'),
+  ('p007', 'p007', '1111', '테스트7', '테스트7', 'seoyoung', '대리', 0, 'participant'),
+  ('p008', 'p008', '1111', '테스트8', '테스트8', 'ain', '과장', 0, 'participant'),
+  ('p009', 'p009', '1111', '테스트9', '테스트9', 'donghyun', '차장', 0, 'participant'),
+  ('p010', 'p010', '1111', '테스트10', '테스트10', 'yeil', '부장', 0, 'participant'),
+  ('p011', 'p011', '1111', '테스트11', '테스트11', 'sanghyun', '사원', 0, 'participant'),
+  ('p012', 'p012', '1111', '테스트12', '테스트12', 'seoyoung', '대리', 0, 'participant'),
+  ('p013', 'p013', '1111', '테스트13', '테스트13', 'ain', '과장', 0, 'participant'),
+  ('p014', 'p014', '1111', '테스트14', '테스트14', 'donghyun', '차장', 0, 'participant'),
+  ('p015', 'p015', '1111', '테스트15', '테스트15', 'yeil', '부장', 0, 'participant'),
+  ('p016', 'p016', '1111', '테스트16', '테스트16', 'sanghyun', '사원', 0, 'participant'),
+  ('p017', 'p017', '1111', '테스트17', '테스트17', 'seoyoung', '대리', 0, 'participant'),
+  ('p018', 'p018', '1111', '테스트18', '테스트18', 'ain', '과장', 0, 'participant'),
+  ('p019', 'p019', '1111', '테스트19', '테스트19', 'donghyun', '차장', 0, 'participant'),
+  ('p020', 'p020', '1111', '테스트20', '테스트20', 'yeil', '부장', 0, 'participant'),
+  ('p021', 'p021', '1111', '테스트21', '테스트21', 'sanghyun', '사원', 0, 'participant'),
+  ('p022', 'p022', '1111', '테스트22', '테스트22', 'seoyoung', '대리', 0, 'participant'),
+  ('p023', 'p023', '1111', '테스트23', '테스트23', 'ain', '과장', 0, 'participant'),
+  ('p024', 'p024', '1111', '테스트24', '테스트24', 'donghyun', '차장', 0, 'participant'),
+  ('p025', 'p025', '1111', '테스트25', '테스트25', 'yeil', '부장', 0, 'participant'),
+  ('p026', 'p026', '1111', '테스트26', '테스트26', 'sanghyun', '사원', 0, 'participant'),
+  ('p027', 'p027', '1111', '테스트27', '테스트27', 'seoyoung', '대리', 0, 'participant'),
+  ('p028', 'p028', '1111', '테스트28', '테스트28', 'ain', '과장', 0, 'participant'),
+  ('p029', 'p029', '1111', '테스트29', '테스트29', 'donghyun', '차장', 0, 'participant'),
+  ('p030', 'p030', '1111', '테스트30', '테스트30', 'yeil', '부장', 0, 'participant')
 on conflict (id) do update set
   username = excluded.username,
   password = excluded.password,

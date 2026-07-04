@@ -1,5 +1,6 @@
 import { Bell, LogIn, Newspaper } from "lucide-react";
-import { FormEvent, ReactNode, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import {
   CartesianGrid,
   Line,
@@ -14,7 +15,6 @@ import { HeaderStats } from "../components/HeaderStats";
 import { InvestmentSheet } from "../components/InvestmentSheet";
 import { api } from "../lib/api";
 import type { Company, CompanyId, GameState, User } from "../types";
-import { buildMarketChartData } from "../utils/chartData";
 import { formatPercent, formatValue, formatWon } from "../utils/format";
 
 type ParticipantPageProps = {
@@ -24,46 +24,58 @@ type ParticipantPageProps = {
 };
 
 const canInvestInStatus = (status: GameState["status"]) =>
-  status === "INVESTING" || status === "REALTIME_ROUND";
+  status === "INVESTING" || status === "REALTIME_ROUND" || status === "ROUND_INVESTING";
 
-const canWithdrawInStatus = (status: GameState["status"]) => status !== "FINISHED";
+const formatTimer = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+};
 
 const statusMessage: Record<GameState["status"], { title: string; body: string }> = {
   BEFORE_START: {
     title: "게임 시작 전입니다.",
-    body: "관리자가 연봉 지급과 투자 시작을 진행하면 투자가 열립니다. 보유 투자는 언제든 회수할 수 있습니다.",
+    body: "관리자가 연봉 지급과 투자 시작을 진행하면 투자가 열립니다.",
   },
   SALARY_PAID: {
     title: "연봉이 지급되었습니다.",
-    body: "아직 투자 시작 전입니다. 관리자 안내를 기다려주세요.",
+    body: "아직 투자 시작 전입니다. 관리자 안내를 기다려 주세요.",
   },
   INVESTING: {
     title: "투자 가능 상태입니다.",
-    body: "기업을 선택해 투자할 수 있고, 보유 투자는 현재 기업가치 기준으로 언제든 회수할 수 있습니다.",
+    body: "기업을 선택해 보유 현금 범위 안에서 투자할 수 있습니다.",
   },
   INVEST_CLOSED: {
     title: "투자가 마감되었습니다.",
-    body: "보유 투자는 현재 기업가치 기준으로 회수할 수 있습니다.",
+    body: "정산 결과가 확정될 때까지 기다려 주세요.",
   },
   SETTLED: {
     title: "정산이 완료되었습니다.",
-    body: "정산 결과를 확인하고, 보유 투자는 현재 기업가치 기준으로 회수할 수 있습니다.",
+    body: "자산 변동과 현재 순위를 확인해 주세요.",
   },
   YEAR_ENDED: {
     title: "연차가 종료되었습니다.",
-    body: "다음 연차를 기다리는 동안에도 보유 투자는 자유롭게 회수할 수 있습니다.",
+    body: "다음 연차 진행 전까지 대기해 주세요.",
   },
   REALTIME_ROUND: {
     title: "4년차 실시간 라운드입니다.",
-    body: "실시간 그래프를 보며 투자하거나, 그 순간의 기업가치 기준으로 회수할 수 있습니다.",
+    body: "실시간 그래프를 보며 마지막 투자를 진행할 수 있습니다.",
+  },
+  ROUND_INVESTING: {
+    title: "4년차 라운드 투자 시간입니다.",
+    body: "60초 동안 투자할 기업을 선택해 주세요.",
+  },
+  ROUND_RESULT: {
+    title: "라운드 결과 공개 중입니다.",
+    body: "잠시 후 투자금이 전액 자동 회수되고 다음 라운드가 시작됩니다.",
   },
   PAUSED: {
     title: "게임이 일시정지되었습니다.",
-    body: "타이머와 투자가 잠시 멈췄습니다. 관리자 안내를 기다려주세요.",
+    body: "타이머와 투자가 잠시 멈췄습니다. 관리자 안내를 기다려 주세요.",
   },
   FINISHED: {
     title: "게임이 종료되었습니다.",
-    body: "최종 결과가 확정되어 투자금 회수는 잠겼습니다. 전광판에서 결과를 확인해주세요.",
+    body: "최종 결과는 전광판에서 확인해 주세요.",
   },
 };
 
@@ -73,9 +85,9 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   const [password, setPassword] = useState("");
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [dismissedAnnouncementId, setDismissedAnnouncementId] = useState<string | null>(null);
+  const [withdrawingCompanyId, setWithdrawingCompanyId] = useState<CompanyId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [withdrawingCompanyId, setWithdrawingCompanyId] = useState<CompanyId | null>(null);
 
   const user = useMemo<User | undefined>(
     () => state?.users.find((item) => item.id === userId && item.role === "participant"),
@@ -83,7 +95,14 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   );
 
   const chartData = useMemo(() => {
-    return buildMarketChartData(state?.companies ?? []);
+    if (!state?.companies.length) return [];
+    return state.companies[0].history.map((point, index) => {
+      const row: Record<string, string | number> = { label: `${point.year}년차-${point.tick}` };
+      state.companies.forEach((company) => {
+        row[company.name] = company.history[index]?.value ?? company.currentValue;
+      });
+      return row;
+    });
   }, [state?.companies]);
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
@@ -113,15 +132,16 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   };
 
   const handleWithdraw = async (companyId: CompanyId) => {
-    if (!userId) return;
-    if (!window.confirm("이 회사의 투자금을 회수할까요?")) return;
+    if (!userId || withdrawingCompanyId) return;
+    const shouldWithdraw = window.confirm("이 기업의 보유 투자금을 모두 전액 회수할까요?");
+    if (!shouldWithdraw) return;
+
     setWithdrawingCompanyId(companyId);
-    setError(null);
     try {
       const response = await api.withdraw(userId, companyId);
       setState(response.state);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "투자금 회수에 실패했습니다.");
+      window.alert(caught instanceof Error ? caught.message : "투자금 회수에 실패했습니다.");
     } finally {
       setWithdrawingCompanyId(null);
     }
@@ -136,7 +156,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
       <main className="min-h-screen bg-slate-50 px-5 py-8 text-slate-950">
         <section className="mx-auto flex max-w-md flex-col gap-6">
           <div>
-            <p className="text-sm font-semibold text-slate-500">인생여전 투자 시뮬레이션</p>
+            <p className="text-sm font-semibold text-slate-500">인생여(ㄱ)전 투자 시뮬레이션</p>
             <h1 className="mt-2 text-3xl font-bold tracking-normal">참가자 로그인</h1>
           </div>
 
@@ -176,8 +196,12 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   }
 
   const canInvest = canInvestInStatus(state.status);
-  const canWithdraw = canWithdrawInStatus(state.status);
-  const showCountdown = canInvest && state.remainingSeconds > 0;
+  const canWithdraw =
+    state.status !== "FINISHED" &&
+    state.status !== "ROUND_INVESTING" &&
+    state.status !== "ROUND_RESULT";
+  const isRoundResult = state.status === "ROUND_RESULT";
+  const showCountdown = (canInvest || isRoundResult) && state.remainingSeconds > 0;
   const isLastTenSeconds = showCountdown && state.remainingSeconds <= 10;
   const activeHoldings = user.holdings.filter((holding) => holding.investedAmount > 0);
   const message = statusMessage[state.status];
@@ -209,6 +233,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
         realName={user.realName}
         companyName={user.companyName}
         cash={user.cash}
+        evaluatedAmount={user.evaluatedAmount}
         totalAsset={user.totalAsset}
         returnRate={user.returnRate}
         year={state.year}
@@ -216,13 +241,16 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
       />
 
       <section className="mx-auto max-w-md space-y-5 px-5 pb-8 pt-5">
-        {error ? <p className="rounded-card bg-red-50 p-6 text-sm font-semibold text-red-600">{error}</p> : null}
-
         <section className="rounded-card border border-slate-200 bg-white p-6 shadow-soft">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="font-bold">{message.title}</h2>
               <p className="mt-1 text-sm text-slate-500">{message.body}</p>
+              {state.year === 4 ? (
+                <p className="mt-2 text-xs font-bold text-slate-400">
+                  {state.currentRound}/{state.maxRounds} 라운드
+                </p>
+              ) : null}
             </div>
             <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
               {state.status}
@@ -238,11 +266,19 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
           >
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className={`text-sm font-semibold ${isLastTenSeconds ? "text-red-100" : "text-slate-500"}`}>
-                  투자 가능 시간
+                <p
+                  className={`text-sm font-semibold ${
+                    isLastTenSeconds ? "text-red-100" : "text-slate-500"
+                  }`}
+                >
+                  {isRoundResult ? "다음 라운드까지" : "투자 가능 시간"}
                 </p>
                 <p className="mt-1 text-sm font-medium">
-                  {isLastTenSeconds ? "곧 마감됩니다" : "시간 안에 투자를 완료해주세요"}
+                  {isRoundResult
+                    ? "결과 공개 후 자동 전액 회수됩니다"
+                    : isLastTenSeconds
+                      ? "곧 마감됩니다"
+                      : "시간 안에 투자를 완료해주세요"}
                 </p>
               </div>
               <strong className="text-4xl font-bold tracking-normal">
@@ -294,7 +330,11 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
                   <span className="text-sm font-bold text-slate-950">
                     {formatValue(company.currentValue)}
                   </span>
-                  <span className={`text-xs font-bold ${company.changeRate >= 0 ? "text-red-500" : "text-blue-500"}`}>
+                  <span
+                    className={`text-xs font-bold ${
+                      company.changeRate >= 0 ? "text-red-500" : "text-blue-500"
+                    }`}
+                  >
                     {formatPercent(company.changeRate)}
                   </span>
                 </div>
@@ -304,12 +344,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
         </section>
 
         <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-bold">내 보유 주식</h2>
-            <span className="text-xs font-semibold text-slate-400">
-              {canWithdraw ? "회수 가능" : "회수 대기"}
-            </span>
-          </div>
+          <h2 className="mb-3 text-base font-bold">내 보유 주식</h2>
           {activeHoldings.length === 0 ? (
             <div className="rounded-card border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
               아직 투자한 기업이 없습니다.
@@ -320,21 +355,26 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
                 <div key={holding.companyId} className="rounded-card bg-white p-6 shadow-soft">
                   <div className="flex items-center justify-between">
                     <span className="font-bold">{holding.companyName}</span>
-                    <span className={`text-sm font-bold ${holding.returnRate >= 0 ? "text-red-500" : "text-blue-500"}`}>
+                    <span
+                      className={`text-sm font-bold ${
+                        holding.returnRate >= 0 ? "text-red-500" : "text-blue-500"
+                      }`}
+                    >
                       {formatPercent(holding.returnRate)}
                     </span>
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
                     <Info label="투자금" value={formatWon(holding.investedAmount)} />
+                    <Info label="평가액" value={formatWon(holding.evaluatedAmount)} />
                     <Info label="기업가치" value={formatValue(holding.currentValue)} />
                   </div>
                   <button
                     type="button"
                     disabled={!canWithdraw || withdrawingCompanyId === holding.companyId}
                     onClick={() => handleWithdraw(holding.companyId)}
-                    className="mt-3 h-[52px] w-full rounded-button border border-slate-200 bg-white font-bold text-slate-950 disabled:bg-slate-100 disabled:text-slate-400"
+                    className="mt-4 h-[46px] w-full rounded-button border border-slate-200 bg-white text-sm font-bold text-slate-950 transition active:scale-[0.99] disabled:bg-slate-100 disabled:text-slate-400"
                   >
-                    {withdrawingCompanyId === holding.companyId ? "회수 중" : canWithdraw ? "투자금 회수하기" : "회수 불가"}
+                    {withdrawingCompanyId === holding.companyId ? "전액 회수 중" : "전액 회수"}
                   </button>
                 </div>
               ))}
@@ -350,18 +390,22 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
             </span>
           </div>
           <div className="space-y-4">
-            {state.companies.map((company) => {
-              const holding = user.holdings.find((item) => item.companyId === company.id);
-              return (
-                <CompanyCard
-                  key={company.id}
-                  company={company}
-                  investedAmount={holding?.investedAmount ?? 0}
-                  canInvest={canInvest}
-                  onSelect={setSelectedCompany}
-                />
-              );
-            })}
+            {state.companies.map((company) => (
+              <CompanyCard
+                key={company.id}
+                company={company}
+                investedAmount={
+                  user.holdings.find((holding) => holding.companyId === company.id)
+                    ?.investedAmount ?? 0
+                }
+                evaluatedAmount={
+                  user.holdings.find((holding) => holding.companyId === company.id)
+                    ?.evaluatedAmount ?? 0
+                }
+                canInvest={canInvest}
+                onSelect={setSelectedCompany}
+              />
+            ))}
           </div>
         </section>
 
@@ -387,12 +431,6 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
       />
     </main>
   );
-}
-
-function formatTimer(seconds: number) {
-  const minutes = Math.floor(seconds / 60);
-  const rest = seconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
 }
 
 function Info({ label, value }: { label: string; value: string }) {
