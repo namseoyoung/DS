@@ -68,9 +68,9 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
               {connected ? "LIVE" : "RECONNECTING"} · {state.year}년차 · {statusLabel[state.status]}
               {state.year === 4 ? ` · ${state.currentRound}/${state.maxRounds} 라운드` : ""}
             </p>
-            <h1 className="mt-2 text-4xl font-bold leading-tight tracking-normal sm:text-5xl lg:text-6xl">인생여전</h1>
+            <h1 className="mt-2 break-keep text-3xl font-bold leading-tight tracking-normal sm:text-5xl lg:text-6xl">인생여전</h1>
           </div>
-          <div className="grid grid-cols-2 gap-3 text-left sm:text-right lg:min-w-[320px]">
+          <div className="grid w-full grid-cols-2 gap-2 text-left sm:gap-3 sm:text-right lg:w-auto lg:min-w-[340px]">
             <DisplayStat
               label="남은 시간"
               value={formatTimer(state.remainingSeconds)}
@@ -88,7 +88,7 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                 <LineChart data={chartData}>
                   <CartesianGrid stroke="#e2e8f0" />
                   <XAxis dataKey="label" hide />
-                  <YAxis domain={["dataMin - 500", "dataMax + 500"]} width={82} tickFormatter={(value) => formatValue(Number(value))} tick={{ fontSize: 12 }} />
+                  <YAxis domain={["dataMin - 500", "dataMax + 500"]} width={72} tickFormatter={(value) => formatValue(Number(value))} tick={{ fontSize: 10 }} />
                   <Tooltip
                     formatter={(value) => formatValue(Number(value))}
                     labelFormatter={(label) => formatChartLabel(String(label))}
@@ -211,9 +211,9 @@ function formatTimer(seconds: number) {
 
 function DisplayStat({ label, value, urgent }: { label: string; value: string; urgent?: boolean }) {
   return (
-    <div className={`min-w-0 rounded-card px-4 py-4 sm:px-5 ${urgent ? "bg-red-600" : "bg-white/10"}`}>
-      <p className={`text-xs font-semibold sm:text-sm ${urgent ? "text-red-100" : "text-slate-300"}`}>{label}</p>
-      <p className="mt-1 break-keep text-2xl font-bold sm:text-3xl">{value}</p>
+    <div className={`min-w-0 rounded-[18px] px-3 py-3 sm:rounded-card sm:px-5 sm:py-4 ${urgent ? "bg-red-600" : "bg-white/10"}`}>
+      <p className={`whitespace-nowrap text-[11px] font-semibold leading-none sm:text-sm ${urgent ? "text-red-100" : "text-slate-300"}`}>{label}</p>
+      <p className="mt-2 whitespace-nowrap font-mono text-[clamp(1.35rem,7vw,2rem)] font-bold leading-none tracking-normal sm:text-3xl">{value}</p>
     </div>
   );
 }
