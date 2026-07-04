@@ -1,5 +1,5 @@
 import { Building2, ChevronRight, X } from "lucide-react";
-import { useState } from "react";
+import { MouseEvent, useEffect, useState } from "react";
 import type { Company, CompanyId } from "../types";
 import { formatPercent, formatValue, formatWon } from "../utils/format";
 import { CompanyChart } from "./CompanyChart";
@@ -138,9 +138,29 @@ function CompanyProfileModal({
   profile: CompanyProfile;
   onClose: () => void;
 }) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  const stopPropagation = (event: MouseEvent) => {
+    event.stopPropagation();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 grid place-items-end bg-slate-950/45 px-4 pb-4 pt-10 sm:place-items-center">
-      <section className="w-full max-w-md rounded-card bg-white p-6 shadow-soft">
+    <div
+      className="fixed inset-0 z-50 grid place-items-end bg-slate-950/45 px-4 pb-4 pt-10 sm:place-items-center"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <section
+        className="w-full max-w-md rounded-card bg-white p-6 shadow-soft"
+        onClick={stopPropagation}
+      >
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <CompanyAvatar company={company} initials={profile.initials} />
@@ -151,7 +171,10 @@ function CompanyProfileModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={(event) => {
+              event.stopPropagation();
+              onClose();
+            }}
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-500"
             aria-label="닫기"
           >
