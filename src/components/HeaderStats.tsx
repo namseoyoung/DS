@@ -43,9 +43,10 @@ export function HeaderStats({
               type="button"
               onClick={onLogout}
               aria-label="로그아웃"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-950 text-white transition active:scale-95"
+              className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-slate-950 px-3 text-xs font-bold text-white transition active:scale-95"
             >
-              <LogOut size={19} aria-hidden />
+              <LogOut size={15} aria-hidden />
+              로그아웃
             </button>
           ) : (
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-950 text-white">
