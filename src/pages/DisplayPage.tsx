@@ -68,7 +68,7 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
               {connected ? "LIVE" : "RECONNECTING"} · {state.year}년차 · {statusLabel[state.status]}
               {state.year === 4 ? ` · ${state.currentRound}/${state.maxRounds} 라운드` : ""}
             </p>
-            <h1 className="mt-2 break-keep text-3xl font-bold leading-tight tracking-normal sm:text-5xl lg:text-6xl">인생여전</h1>
+            <h1 className="brand-shine mt-2 break-keep text-3xl font-bold leading-tight tracking-normal sm:text-5xl lg:text-6xl">인생여전</h1>
           </div>
           <div className="grid w-full grid-cols-2 gap-2 text-left sm:gap-3 sm:text-right lg:w-auto lg:min-w-[340px]">
             <DisplayStat
