@@ -1,4 +1,4 @@
-import { Bell, LogIn, Newspaper } from "lucide-react";
+import { Bell, LogIn, Newspaper, X } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -88,6 +88,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   const [withdrawingCompanyId, setWithdrawingCompanyId] = useState<CompanyId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [feedSheet, setFeedSheet] = useState<"news" | "announcements" | null>(null);
 
   const user = useMemo<User | undefined>(
     () => state?.users.find((item) => item.id === userId && item.role === "participant"),
@@ -225,6 +226,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   const isLastTenSeconds = showCountdown && state.remainingSeconds <= 10;
   const activeHoldings = user.holdings.filter((holding) => holding.investedAmount > 0);
   const message = statusMessage[state.status];
+  const latestNews = state.news[0];
   const latestAnnouncement = state.announcements[0];
   const showAnnouncementToast =
     latestAnnouncement && latestAnnouncement.id !== dismissedAnnouncementId;
@@ -277,6 +279,23 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
               {state.status}
             </span>
           </div>
+        </section>
+
+        <section className="grid grid-cols-2 gap-3">
+          <FeedShortcut
+            icon={<Bell size={16} aria-hidden />}
+            label="공지"
+            title={latestAnnouncement?.content ?? "새 공지가 없습니다"}
+            meta={state.announcements.length > 0 ? `${state.announcements.length}개` : "확인 완료"}
+            onClick={() => setFeedSheet("announcements")}
+          />
+          <FeedShortcut
+            icon={<Newspaper size={16} aria-hidden />}
+            label="뉴스"
+            title={latestNews ? `${latestNews.title} · ${latestNews.content}` : "새 뉴스가 없습니다"}
+            meta={state.news.length > 0 ? `${state.news.length}개` : "대기 중"}
+            onClick={() => setFeedSheet("news")}
+          />
         </section>
 
         {showCountdown ? (
@@ -429,20 +448,14 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
             ))}
           </div>
         </section>
-
-        <section className="grid gap-3">
-          <FeedCard
-            icon={<Newspaper size={18} aria-hidden />}
-            title="뉴스"
-            items={state.news.map((item) => `${item.title} - ${item.content}`)}
-          />
-          <FeedCard
-            icon={<Bell size={18} aria-hidden />}
-            title="공지"
-            items={state.announcements.map((item) => item.content)}
-          />
-        </section>
       </section>
+
+      <FeedSheet
+        type={feedSheet}
+        news={state.news}
+        announcements={state.announcements}
+        onClose={() => setFeedSheet(null)}
+      />
 
       <InvestmentSheet
         company={selectedCompany}
@@ -463,32 +476,109 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function FeedCard({
+function FeedShortcut({
   icon,
+  label,
   title,
-  items,
+  meta,
+  onClick,
 }: {
   icon: ReactNode;
+  label: string;
   title: string;
-  items: string[];
+  meta: string;
+  onClick: () => void;
 }) {
   return (
-    <section className="rounded-card bg-white p-6 shadow-soft">
-      <div className="flex items-center gap-2 font-bold">
-        {icon}
-        {title}
+    <button
+      type="button"
+      onClick={onClick}
+      className="min-w-0 rounded-card bg-white p-4 text-left shadow-soft transition active:scale-[0.99]"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
+          {icon}
+          {label}
+        </span>
+        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">
+          {meta}
+        </span>
       </div>
-      <div className="mt-3 space-y-2 text-sm text-slate-600">
-        {items.length === 0 ? (
-          <p>아직 표시할 내용이 없습니다.</p>
-        ) : (
-          items.slice(0, 3).map((item) => <p key={item}>{item}</p>)
-        )}
+      <p className="mt-2 line-clamp-2 min-h-[40px] text-sm font-bold leading-5 text-slate-950">
+        {title}
+      </p>
+      <p className="mt-2 text-xs font-bold text-blue-600">전체보기</p>
+    </button>
+  );
+}
+
+function FeedSheet({
+  type,
+  news,
+  announcements,
+  onClose,
+}: {
+  type: "news" | "announcements" | null;
+  news: { id: string; title: string; content: string; createdAt: string }[];
+  announcements: { id: string; content: string; createdAt: string }[];
+  onClose: () => void;
+}) {
+  if (!type) return null;
+
+  const isNews = type === "news";
+  const items = isNews
+    ? news.map((item) => ({ id: item.id, title: item.title, body: item.content, createdAt: item.createdAt }))
+    : announcements.map((item) => ({ id: item.id, title: "공지", body: item.content, createdAt: item.createdAt }));
+
+  return (
+    <section className="fixed inset-0 z-50 flex items-end bg-slate-950/40 px-3 pb-3" onClick={onClose}>
+      <div
+        className="mx-auto max-h-[72vh] w-full max-w-md overflow-hidden rounded-card bg-white shadow-2xl animate-in"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <div>
+            <p className="text-xs font-bold text-slate-400">전체보기</p>
+            <h2 className="text-lg font-bold">{isNews ? "뉴스" : "공지"}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="닫기"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600"
+          >
+            <X size={18} aria-hidden />
+          </button>
+        </header>
+        <div className="max-h-[56vh] space-y-3 overflow-y-auto px-5 py-4">
+          {items.length === 0 ? (
+            <p className="rounded-button bg-slate-50 px-4 py-5 text-sm font-semibold text-slate-500">
+              아직 표시할 내용이 없습니다.
+            </p>
+          ) : (
+            items.map((item) => (
+              <article key={item.id} className="rounded-button bg-slate-50 px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-sm font-bold text-slate-950">{item.title}</h3>
+                  <time className="shrink-0 text-[11px] font-semibold text-slate-400">
+                    {formatFeedTime(item.createdAt)}
+                  </time>
+                </div>
+                <p className="mt-1 text-sm leading-5 text-slate-600">{item.body}</p>
+              </article>
+            ))
+          )}
+        </div>
       </div>
     </section>
   );
 }
 
+function formatFeedTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+}
 function formatChartLabel(label: string) {
   const match = label.match(/^(\d+).+-(\d+)$/);
   if (!match) return "가치 변동";
