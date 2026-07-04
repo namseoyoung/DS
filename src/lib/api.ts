@@ -47,6 +47,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ userId, companyId, amount }),
     }),
+  withdraw: (userId: string, companyId: CompanyId) =>
+    request<{ log: TransactionLog; state: GameState }>("/api/withdrawals", {
+      method: "POST",
+      body: JSON.stringify({ userId, companyId }),
+    }),
   setStatus: (adminId: string, status: GameStatus, durationSeconds?: number) =>
     request<GameState>("/api/admin/status", {
       method: "POST",

@@ -88,6 +88,20 @@ app.post("/api/investments", async (request, response, next) => {
   }
 });
 
+app.post("/api/withdrawals", async (request, response, next) => {
+  try {
+    const userId = String(request.body.userId ?? "");
+    const companyId = String(request.body.companyId ?? "") as CompanyId;
+
+    const log = await store.withdraw(userId, companyId);
+    const state = await broadcastState();
+    io.emit("transaction:created", log);
+    response.status(201).json({ log, state });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/admin/status", async (request, response, next) => {
   try {
     await runAdminAction(request, response, () =>

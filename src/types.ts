@@ -74,7 +74,7 @@ export type TransactionLog = {
   companyId: CompanyId;
   companyName: string;
   amount: number;
-  actionType: "INVEST" | "SALARY" | "SETTLEMENT" | "RESET";
+  actionType: "INVEST" | "WITHDRAW" | "SALARY" | "SETTLEMENT" | "RESET";
   year: number;
   createdAt: string;
 };

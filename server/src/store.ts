@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+﻿import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
   Announcement,
   Company,
@@ -106,6 +106,7 @@ export type Store = {
   getState(): Promise<GameState>;
   login(id: string, password: string): Promise<User>;
   invest(userId: string, companyId: CompanyId, amount: number): Promise<TransactionLog>;
+  withdraw(userId: string, companyId: CompanyId): Promise<TransactionLog>;
   setStatus(status: GameStatus, durationSeconds?: number): Promise<void>;
   paySalary(): Promise<void>;
   settleYear(changes: Partial<Record<CompanyId, number>>): Promise<void>;
@@ -133,6 +134,9 @@ const getRemainingSeconds = (timerEndsAt: string | null) => {
 
 const getInvestmentAmount = (investment: DbInvestment) =>
   Number(investment.invested_amount ?? investment.amount ?? 0);
+
+const canWithdrawInStatus = (status: GameStatus) =>
+  status === "INVEST_CLOSED" || status === "SETTLED" || status === "YEAR_ENDED";
 
 const calculateEvaluatedInvestment = (
   investment: DbInvestment,
@@ -401,7 +405,7 @@ class MemoryStore implements Store {
 
   async login(id: string, password: string) {
     const user = this.users.find((item) => item.id === id && item.password === password);
-    if (!user) throw new Error("아이디 또는 비밀번호가 올바르지 않습니다.");
+    if (!user) throw new Error("?꾩씠???먮뒗 鍮꾨?踰덊샇媛 ?щ컮瑜댁? ?딆뒿?덈떎.");
     user.is_online = true;
     this.session.updated_at = now();
     const state = await this.getState();
@@ -410,16 +414,16 @@ class MemoryStore implements Store {
 
   async invest(userId: string, companyId: CompanyId, amount: number) {
     if (!isInvestableStatus(this.session.status)) {
-      throw new Error("현재는 투자 가능 상태가 아닙니다.");
+      throw new Error("?꾩옱???ъ옄 媛???곹깭媛 ?꾨떃?덈떎.");
     }
 
     const user = this.users.find((item) => item.id === userId);
     const company = this.companies.find((item) => item.id === companyId);
     if (!user || !company || user.role !== "participant") {
-      throw new Error("투자할 회원 또는 기업을 찾을 수 없습니다.");
+      throw new Error("?ъ옄???뚯썝 ?먮뒗 湲곗뾽??李얠쓣 ???놁뒿?덈떎.");
     }
     if (amount <= 0 || amount > user.cash) {
-      throw new Error("보유 현금보다 많이 투자할 수 없습니다.");
+      throw new Error("蹂댁쑀 ?꾧툑蹂대떎 留롮씠 ?ъ옄?????놁뒿?덈떎.");
     }
 
     user.cash -= amount;
@@ -448,6 +452,49 @@ class MemoryStore implements Store {
     }
 
     const log = this.addLog(user.id, user.nickname, company.id, company.name, amount, "INVEST");
+    this.session.updated_at = now();
+    return {
+      logId: log.id,
+      userId: log.user_id,
+      userName: log.user_name,
+      companyId: log.company_id,
+      companyName: log.company_name,
+      amount: log.amount,
+      actionType: log.action_type,
+      year: log.year,
+      createdAt: log.created_at,
+    };
+  }
+
+  async withdraw(userId: string, companyId: CompanyId) {
+    if (!canWithdrawInStatus(this.session.status)) {
+      throw new Error("?꾩옱???ъ옄湲덉쓣 ?뚯닔?????놁뒿?덈떎.");
+    }
+
+    const user = this.users.find((item) => item.id === userId);
+    const company = this.companies.find((item) => item.id === companyId);
+    if (!user || !company || user.role !== "participant") {
+      throw new Error("?뚯닔???뚯썝 ?먮뒗 湲곗뾽??李얠쓣 ???놁뒿?덈떎.");
+    }
+
+    const userInvestments = this.investments.filter(
+      (investment) => investment.user_id === userId && investment.company_id === companyId,
+    );
+    if (userInvestments.length === 0) {
+      throw new Error("?뚯닔???ъ옄湲덉씠 ?놁뒿?덈떎.");
+    }
+
+    const withdrawalAmount = userInvestments.reduce((sum, investment) => {
+      const valuation = calculateVisibleInvestment(investment, company, false);
+      return sum + valuation.evaluatedAmount;
+    }, 0);
+
+    user.cash += Math.round(withdrawalAmount);
+    this.investments = this.investments.filter(
+      (investment) => !(investment.user_id === userId && investment.company_id === companyId),
+    );
+
+    const log = this.addLog(user.id, user.nickname, company.id, company.name, Math.round(withdrawalAmount), "WITHDRAW");
     this.session.updated_at = now();
     return {
       logId: log.id,
@@ -533,7 +580,7 @@ class MemoryStore implements Store {
 
   async retreatYear() {
     if (this.session.year <= 1) {
-      throw new Error("이미 1년차입니다.");
+      throw new Error("?대? 1?꾩감?낅땲??");
     }
     this.session.year = Math.max(1, this.session.year - 1);
     await this.setStatus("YEAR_ENDED");
@@ -594,7 +641,7 @@ class MemoryStore implements Store {
     patch: Partial<Pick<User, "nickname" | "realName" | "companyId" | "rank" | "cash">>,
   ) {
     const user = this.users.find((item) => item.id === userId);
-    if (!user || user.role !== "participant") throw new Error("수정할 회원을 찾을 수 없습니다.");
+    if (!user || user.role !== "participant") throw new Error("?섏젙???뚯썝??李얠쓣 ???놁뒿?덈떎.");
     if (patch.nickname !== undefined) user.nickname = patch.nickname;
     if (patch.realName !== undefined) user.real_name = patch.realName;
     if (patch.companyId !== undefined) user.company_id = patch.companyId;
@@ -608,7 +655,7 @@ class MemoryStore implements Store {
     patch: Partial<Pick<Company, "name" | "initialCapital" | "currentValue">>,
   ) {
     const company = this.companies.find((item) => item.id === companyId);
-    if (!company) throw new Error("수정할 기업을 찾을 수 없습니다.");
+    if (!company) throw new Error("?섏젙??湲곗뾽??李얠쓣 ???놁뒿?덈떎.");
     if (patch.name !== undefined) company.name = patch.name;
     if (patch.initialCapital !== undefined) {
       company.initial_capital = Math.max(1, Math.floor(Number(patch.initialCapital)));
@@ -776,7 +823,7 @@ class SupabaseStore extends MemoryStore {
     ]);
 
     if (!session || !companies || !users || !investments || !history || !logs) {
-      throw new Error("Supabase 상태를 불러오지 못했습니다.");
+      throw new Error("Supabase ?곹깭瑜?遺덈윭?ㅼ? 紐삵뻽?듬땲??");
     }
 
     return calculateState(
@@ -802,21 +849,21 @@ class SupabaseStore extends MemoryStore {
       .eq("id", id)
       .eq("password", password)
       .single();
-    if (!user) throw new Error("아이디 또는 비밀번호가 올바르지 않습니다.");
+    if (!user) throw new Error("?꾩씠???먮뒗 鍮꾨?踰덊샇媛 ?щ컮瑜댁? ?딆뒿?덈떎.");
     await this.supabase.from("users").update({ is_online: true }).eq("id", id);
     return (await this.getState()).users.find((item) => item.id === id)!;
   }
 
   async invest(userId: string, companyId: CompanyId, amount: number) {
     const state = await this.getState();
-    if (!isInvestableStatus(state.status)) throw new Error("현재는 투자 가능 상태가 아닙니다.");
+    if (!isInvestableStatus(state.status)) throw new Error("?꾩옱???ъ옄 媛???곹깭媛 ?꾨떃?덈떎.");
     const user = state.users.find((item) => item.id === userId);
     const company = state.companies.find((item) => item.id === companyId);
     if (!user || !company || user.role !== "participant") {
-      throw new Error("투자할 회원 또는 기업을 찾을 수 없습니다.");
+      throw new Error("?ъ옄???뚯썝 ?먮뒗 湲곗뾽??李얠쓣 ???놁뒿?덈떎.");
     }
     if (amount <= 0 || amount > user.cash) {
-      throw new Error("보유 현금보다 많이 투자할 수 없습니다.");
+      throw new Error("蹂댁쑀 ?꾧툑蹂대떎 留롮씠 ?ъ옄?????놁뒿?덈떎.");
     }
 
     await this.supabase.from("users").update({ cash: user.cash - amount }).eq("id", userId);
@@ -877,7 +924,71 @@ class SupabaseStore extends MemoryStore {
     };
   }
 
-  async setStatus(status: GameStatus, durationSeconds?: number) {
+
+  async withdraw(userId: string, companyId: CompanyId) {
+    const state = await this.getState();
+    if (!canWithdrawInStatus(state.status)) {
+      throw new Error("현재는 투자금을 회수할 수 없습니다.");
+    }
+
+    const user = state.users.find((item) => item.id === userId);
+    const company = state.companies.find((item) => item.id === companyId);
+    if (!user || !company || user.role !== "participant") {
+      throw new Error("회수할 회원 또는 기업을 찾을 수 없습니다.");
+    }
+
+    const { data: investments } = await this.supabase
+      .from("investments")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("company_id", companyId);
+    const userInvestments = (investments ?? []) as DbInvestment[];
+    if (userInvestments.length === 0) {
+      throw new Error("회수할 투자금이 없습니다.");
+    }
+
+    const withdrawalAmount = Math.round(
+      userInvestments.reduce((sum, investment) => {
+        const valuation = calculateVisibleInvestment(
+          investment,
+          {
+            initial_capital: company.initialCapital,
+            current_value: company.currentValue,
+          },
+          false,
+        );
+        return sum + valuation.evaluatedAmount;
+      }, 0),
+    );
+
+    await this.supabase.from("users").update({ cash: user.cash + withdrawalAmount }).eq("id", userId);
+    await this.supabase.from("investments").delete().eq("user_id", userId).eq("company_id", companyId);
+    const { data: log } = await this.supabase
+      .from("transactions")
+      .insert({
+        user_id: userId,
+        user_name: user.nickname,
+        company_id: companyId,
+        company_name: company.name,
+        amount: withdrawalAmount,
+        action_type: "WITHDRAW",
+        year: state.year,
+      })
+      .select("*")
+      .single();
+
+    return {
+      logId: log.id,
+      userId: log.user_id,
+      userName: log.user_name,
+      companyId: log.company_id,
+      companyName: log.company_name,
+      amount: log.amount,
+      actionType: log.action_type,
+      year: log.year,
+      createdAt: log.created_at,
+    };
+  }  async setStatus(status: GameStatus, durationSeconds?: number) {
     const state = await this.getState();
     const { data: currentSession } = await this.supabase
       .from("game_status")
@@ -1010,7 +1121,7 @@ class SupabaseStore extends MemoryStore {
   async retreatYear() {
     const state = await this.getState();
     if (state.year <= 1) {
-      throw new Error("이미 1년차입니다.");
+      throw new Error("?대? 1?꾩감?낅땲??");
     }
     const previousYear = Math.max(1, state.year - 1);
     await this.supabase
@@ -1092,7 +1203,7 @@ class SupabaseStore extends MemoryStore {
   ) {
     const state = await this.getState();
     const company = state.companies.find((item) => item.id === companyId);
-    if (!company) throw new Error("수정할 기업을 찾을 수 없습니다.");
+    if (!company) throw new Error("?섏젙??湲곗뾽??李얠쓣 ???놁뒿?덈떎.");
 
     const updates: Record<string, unknown> = {};
     if (patch.name !== undefined) updates.name = patch.name;
