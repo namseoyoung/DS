@@ -156,7 +156,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
       <main className="min-h-screen bg-slate-50 px-5 py-8 text-slate-950">
         <section className="mx-auto flex max-w-md flex-col gap-6">
           <div>
-            <p className="text-sm font-semibold text-slate-500">인생여(ㄱ)전 투자 시뮬레이션</p>
+            <p className="text-sm font-semibold text-slate-500">인생여전</p>
             <h1 className="mt-2 text-3xl font-bold tracking-normal">참가자 로그인</h1>
           </div>
 

@@ -60,17 +60,17 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
   });
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-6 text-white">
+    <main className="min-h-screen overflow-x-hidden bg-slate-950 px-4 py-5 text-white sm:px-6 sm:py-6">
       <section className="mx-auto max-w-7xl">
-        <div className="flex items-end justify-between gap-4">
+        <div className="grid gap-4 lg:flex lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm font-semibold text-slate-400">
+            <p className="text-xs font-semibold leading-5 text-slate-400 sm:text-sm">
               {connected ? "LIVE" : "RECONNECTING"} · {state.year}년차 · {statusLabel[state.status]}
               {state.year === 4 ? ` · ${state.currentRound}/${state.maxRounds} 라운드` : ""}
             </p>
-            <h1 className="mt-2 text-5xl font-bold tracking-normal">인생여(ㄱ)전 투자 전광판</h1>
+            <h1 className="mt-2 text-4xl font-bold leading-tight tracking-normal sm:text-5xl lg:text-6xl">인생여전</h1>
           </div>
-          <div className="grid grid-cols-2 gap-3 text-right">
+          <div className="grid grid-cols-2 gap-3 text-left sm:text-right lg:min-w-[320px]">
             <DisplayStat
               label="남은 시간"
               value={formatTimer(state.remainingSeconds)}
@@ -80,15 +80,15 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-[1.35fr_0.9fr]">
-          <section className="rounded-card bg-white p-6 text-slate-950">
-            <h2 className="text-xl font-bold">실시간 기업 가치 그래프</h2>
-            <div className="mt-4 h-[410px]">
+        <div className="mt-5 grid gap-4 lg:mt-6 lg:grid-cols-[1.35fr_0.9fr] lg:gap-5">
+          <section className="rounded-card bg-white p-5 text-slate-950 sm:p-6">
+            <h2 className="text-lg font-bold sm:text-xl">실시간 기업 가치 그래프</h2>
+            <div className="mt-4 h-[300px] sm:h-[410px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <CartesianGrid stroke="#e2e8f0" />
                   <XAxis dataKey="label" hide />
-                  <YAxis domain={["dataMin - 500", "dataMax + 500"]} width={112} tickFormatter={(value) => formatValue(Number(value))} />
+                  <YAxis domain={["dataMin - 500", "dataMax + 500"]} width={82} tickFormatter={(value) => formatValue(Number(value))} tick={{ fontSize: 12 }} />
                   <Tooltip
                     formatter={(value) => formatValue(Number(value))}
                     labelFormatter={(label) => formatChartLabel(String(label))}
@@ -137,7 +137,7 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
           </section>
         </div>
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-3">
+        <div className="mt-4 grid gap-4 lg:mt-5 lg:grid-cols-3 lg:gap-5">
           <Feed icon={<Newspaper size={20} />} title="최신 뉴스" items={state.news.map((item) => `${item.title}: ${item.content}`)} />
           <Feed icon={<Bell size={20} />} title="최신 공지" items={state.announcements.map((item) => item.content)} />
           <section className="rounded-card bg-white/10 p-6">
@@ -211,17 +211,17 @@ function formatTimer(seconds: number) {
 
 function DisplayStat({ label, value, urgent }: { label: string; value: string; urgent?: boolean }) {
   return (
-    <div className={`rounded-card px-5 py-4 ${urgent ? "bg-red-600" : "bg-white/10"}`}>
-      <p className={`text-sm ${urgent ? "text-red-100" : "text-slate-300"}`}>{label}</p>
-      <p className="text-3xl font-bold">{value}</p>
+    <div className={`min-w-0 rounded-card px-4 py-4 sm:px-5 ${urgent ? "bg-red-600" : "bg-white/10"}`}>
+      <p className={`text-xs font-semibold sm:text-sm ${urgent ? "text-red-100" : "text-slate-300"}`}>{label}</p>
+      <p className="mt-1 break-keep text-2xl font-bold sm:text-3xl">{value}</p>
     </div>
   );
 }
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-card bg-white p-6 text-slate-950">
-      <h2 className="text-xl font-bold">{title}</h2>
+    <section className="rounded-card bg-white p-5 text-slate-950 sm:p-6">
+      <h2 className="text-lg font-bold sm:text-xl">{title}</h2>
       <div className="mt-4 space-y-3">{children}</div>
     </section>
   );
@@ -239,13 +239,13 @@ function RankLine({
   sub: string;
 }) {
   return (
-    <div className="grid grid-cols-[44px_1fr_auto] items-center rounded-button bg-slate-50 p-3">
-      <span className="text-2xl font-bold text-slate-400">{rank}</span>
+    <div className="grid grid-cols-[34px_minmax(0,1fr)] gap-2 rounded-button bg-slate-50 p-3 sm:grid-cols-[44px_minmax(0,1fr)_auto] sm:items-center">
+      <span className="text-xl font-bold text-slate-400 sm:text-2xl">{rank}</span>
       <div>
-        <p className="text-lg font-bold">{name}</p>
-        <p className="text-sm text-slate-500">{sub}</p>
+        <p className="truncate text-base font-bold sm:text-lg">{name}</p>
+        <p className="truncate text-xs text-slate-500 sm:text-sm">{sub}</p>
       </div>
-      <span className="text-xl font-bold">{main}</span>
+      <span className="col-span-2 text-right text-lg font-bold sm:col-span-1 sm:text-xl">{main}</span>
     </div>
   );
 }
@@ -260,8 +260,8 @@ function Feed({
   items: string[];
 }) {
   return (
-    <section className="rounded-card bg-white/10 p-6">
-      <h2 className="flex items-center gap-2 text-xl font-bold">
+    <section className="rounded-card bg-white/10 p-5 sm:p-6">
+      <h2 className="flex items-center gap-2 text-lg font-bold sm:text-xl">
         {icon}
         {title}
       </h2>
