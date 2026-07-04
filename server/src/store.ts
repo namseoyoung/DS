@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+﻿import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
   Announcement,
   Company,
@@ -47,6 +47,8 @@ type DbCompany = {
   total_investment?: number;
   company_rank?: number | null;
   color: string;
+  logo_url?: string | null;
+  tagline?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -125,7 +127,7 @@ export type Store = {
   ): Promise<void>;
   updateCompany(
     companyId: CompanyId,
-    patch: Partial<Pick<Company, "name" | "initialCapital" | "currentValue">>,
+    patch: Partial<Pick<Company, "name" | "initialCapital" | "currentValue" | "logoUrl" | "tagline">>,
   ): Promise<void>;
   reset(scope?: string): Promise<void>;
 };
@@ -250,6 +252,8 @@ const calculateState = (
       totalInvestment,
       rank: 0,
       color: company.color,
+      logoUrl: company.logo_url ?? "",
+      tagline: company.tagline ?? "",
       history: history
         .filter((point) => point.company_id === company.id)
         .map((point) => ({
@@ -416,6 +420,8 @@ class MemoryStore implements Store {
         current_value: company.initialCapital,
         previous_value: company.initialCapital,
         color: company.color,
+        logo_url: company.logoUrl,
+        tagline: company.tagline,
         created_at: createdAt,
         updated_at: createdAt,
       }));
@@ -794,11 +800,13 @@ class MemoryStore implements Store {
 
   async updateCompany(
     companyId: CompanyId,
-    patch: Partial<Pick<Company, "name" | "initialCapital" | "currentValue">>,
+    patch: Partial<Pick<Company, "name" | "initialCapital" | "currentValue" | "logoUrl" | "tagline">>,
   ) {
     const company = this.companies.find((item) => item.id === companyId);
     if (!company) throw new Error("수정할 기업을 찾을 수 없습니다.");
     if (patch.name !== undefined) company.name = patch.name;
+    if (patch.logoUrl !== undefined) company.logo_url = patch.logoUrl;
+    if (patch.tagline !== undefined) company.tagline = patch.tagline;
     if (patch.initialCapital !== undefined) {
       company.initial_capital = Math.max(1, Math.floor(Number(patch.initialCapital)));
     }
@@ -911,6 +919,8 @@ class SupabaseStore extends MemoryStore {
           current_value: company.initialCapital,
           previous_value: company.initialCapital,
           color: company.color,
+          logo_url: company.logoUrl,
+          tagline: company.tagline,
         })),
       );
       await this.supabase.from("company_value_history").insert(
@@ -1487,7 +1497,7 @@ class SupabaseStore extends MemoryStore {
 
   async updateCompany(
     companyId: CompanyId,
-    patch: Partial<Pick<Company, "name" | "initialCapital" | "currentValue">>,
+    patch: Partial<Pick<Company, "name" | "initialCapital" | "currentValue" | "logoUrl" | "tagline">>,
   ) {
     const state = await this.getState();
     const company = state.companies.find((item) => item.id === companyId);
@@ -1495,6 +1505,8 @@ class SupabaseStore extends MemoryStore {
 
     const updates: Record<string, unknown> = {};
     if (patch.name !== undefined) updates.name = patch.name;
+    if (patch.logoUrl !== undefined) updates.logo_url = patch.logoUrl;
+    if (patch.tagline !== undefined) updates.tagline = patch.tagline;
     if (patch.initialCapital !== undefined) {
       updates.initial_capital = Math.max(1, Math.floor(Number(patch.initialCapital)));
     }

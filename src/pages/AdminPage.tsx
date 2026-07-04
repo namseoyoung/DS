@@ -147,12 +147,18 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
     if (initialCapital === null) return;
     const currentValue = window.prompt("현재 기업 가치", String(company.currentValue));
     if (currentValue === null) return;
+    const logoUrl = window.prompt("프로필 사진 URL", company.logoUrl);
+    if (logoUrl === null) return;
+    const tagline = window.prompt("회사 한줄평", company.tagline);
+    if (tagline === null) return;
 
     run(() =>
       api.updateCompany(admin!.id, company.id, {
         name,
         initialCapital: Number(initialCapital),
         currentValue: Number(currentValue),
+        logoUrl,
+        tagline,
       }),
     );
   };
@@ -373,8 +379,20 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
                   onClick={() => editCompany(company)}
                   className="rounded-card border border-slate-200 p-5 text-left"
                 >
-                  <p className="font-bold">{company.name}</p>
-                  <p className="mt-2 text-sm text-slate-500">현재 가치 {formatValue(company.currentValue)}</p>
+                  <div className="flex items-center gap-3">
+                    {company.logoUrl ? (
+                      <img src={company.logoUrl} alt="" className="h-10 w-10 rounded-full object-cover ring-1 ring-slate-200" />
+                    ) : (
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-black text-white" style={{ backgroundColor: company.color }}>
+                        {company.name.slice(0, 1)}
+                      </span>
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate font-bold">{company.name}</p>
+                      <p className="line-clamp-1 text-xs text-slate-500">{company.tagline || "한줄평 없음"}</p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm text-slate-500">현재 가치 {formatValue(company.currentValue)}</p>
                   <p className="text-sm text-slate-500">초기 자본 {formatValue(company.initialCapital)}</p>
                 </button>
               ))}

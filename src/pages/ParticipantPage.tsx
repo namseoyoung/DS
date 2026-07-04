@@ -84,6 +84,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [profileCompany, setProfileCompany] = useState<Company | null>(null);
   const [dismissedAnnouncementId, setDismissedAnnouncementId] = useState<string | null>(null);
   const [withdrawingCompanyId, setWithdrawingCompanyId] = useState<CompanyId | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -444,6 +445,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
                 }
                 canInvest={canInvest}
                 onSelect={setSelectedCompany}
+                onOpenProfile={setProfileCompany}
               />
             ))}
           </div>
@@ -456,6 +458,8 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
         announcements={state.announcements}
         onClose={() => setFeedSheet(null)}
       />
+
+      <CompanyProfileSheet company={profileCompany} onClose={() => setProfileCompany(null)} />
 
       <InvestmentSheet
         company={selectedCompany}
@@ -473,6 +477,50 @@ function Info({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-slate-500">{label}</p>
       <p className="mt-1 font-bold">{value}</p>
     </div>
+  );
+}
+
+function CompanyProfileSheet({ company, onClose }: { company: Company | null; onClose: () => void }) {
+  if (!company) return null;
+
+  return (
+    <section className="fixed inset-0 z-50 flex items-end bg-slate-950/40 px-3 pb-3" onClick={onClose}>
+      <div
+        className="mx-auto w-full max-w-md rounded-card bg-white p-6 shadow-2xl animate-in"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            {company.logoUrl ? (
+              <img src={company.logoUrl} alt="" className="h-14 w-14 rounded-full object-cover ring-1 ring-slate-200" />
+            ) : (
+              <div className="flex h-14 w-14 items-center justify-center rounded-full text-lg font-black text-white" style={{ backgroundColor: company.color }}>
+                {company.name.slice(0, 1)}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-400">기업 소개</p>
+              <h2 className="truncate text-xl font-bold text-slate-950">{company.name}</h2>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="닫기"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600"
+          >
+            <X size={18} aria-hidden />
+          </button>
+        </div>
+        <p className="mt-5 rounded-button bg-slate-50 px-4 py-4 text-sm font-semibold leading-6 text-slate-700">
+          {company.tagline || "아직 등록된 한줄평이 없습니다."}
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Info label="현재 가치" value={formatValue(company.currentValue)} />
+          <Info label="변동률" value={formatPercent(company.changeRate)} />
+        </div>
+      </div>
+    </section>
   );
 }
 

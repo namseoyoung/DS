@@ -34,6 +34,8 @@ export type Company = {
   totalInvestment: number;
   rank: number;
   color: string;
+  logoUrl: string;
+  tagline: string;
   history: PricePoint[];
   memberAverageAsset: number;
   finalScore: number;

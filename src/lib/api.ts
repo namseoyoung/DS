@@ -120,7 +120,7 @@ export const api = {
   updateCompany: (
     adminId: string,
     companyId: CompanyId,
-    patch: Partial<Pick<Company, "name" | "initialCapital" | "currentValue">>,
+    patch: Partial<Pick<Company, "name" | "initialCapital" | "currentValue" | "logoUrl" | "tagline">>,
   ) =>
     request<GameState>(`/api/admin/companies/${companyId}`, {
       method: "PATCH",

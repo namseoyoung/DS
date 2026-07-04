@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Info } from "lucide-react";
 import type { Company } from "../types";
 import { formatPercent, formatValue, formatWon } from "../utils/format";
 import { CompanyChart } from "./CompanyChart";
@@ -9,23 +9,28 @@ type CompanyCardProps = {
   evaluatedAmount: number;
   canInvest: boolean;
   onSelect?: (company: Company) => void;
+  onOpenProfile?: (company: Company) => void;
 };
 
-export function CompanyCard({ company, investedAmount, evaluatedAmount, canInvest, onSelect }: CompanyCardProps) {
-  const Wrapper = onSelect && canInvest ? "button" : "article";
-
+export function CompanyCard({ company, investedAmount, evaluatedAmount, canInvest, onSelect, onOpenProfile }: CompanyCardProps) {
   return (
-    <Wrapper
-      type={Wrapper === "button" ? "button" : undefined}
-      onClick={Wrapper === "button" ? () => onSelect?.(company) : undefined}
-      className="w-full rounded-card border border-slate-200 bg-white p-6 text-left shadow-soft transition duration-300 active:scale-[0.99]"
-    >
+    <article className="w-full rounded-card border border-slate-200 bg-white p-6 text-left shadow-soft transition duration-300">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold text-slate-400">기업 순위 {company.rank}위</p>
-          <h2 className="mt-1 text-lg font-bold text-slate-950">{company.name}</h2>
-          <p className="mt-1 text-sm text-slate-500">내 투자금 {formatWon(investedAmount)}</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => onOpenProfile?.(company)}
+          className="min-w-0 flex-1 text-left"
+        >
+          <div className="flex items-start gap-3">
+            <CompanyAvatar company={company} />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-slate-400">기업 순위 {company.rank}위</p>
+              <h2 className="mt-1 truncate text-lg font-bold text-slate-950">{company.name}</h2>
+              <p className="mt-1 line-clamp-1 text-sm text-slate-500">{company.tagline || "회사 소개를 확인해 보세요"}</p>
+              <p className="mt-1 text-sm text-slate-500">내 투자금 {formatWon(investedAmount)}</p>
+            </div>
+          </div>
+        </button>
         <div className="flex items-center gap-2 text-right">
           <div>
             <p className="text-lg font-bold text-slate-950">{formatValue(company.currentValue)}</p>
@@ -37,7 +42,14 @@ export function CompanyCard({ company, investedAmount, evaluatedAmount, canInves
               {formatPercent(company.changeRate)}
             </p>
           </div>
-          {Wrapper === "button" ? <ChevronRight size={18} className="text-slate-300" aria-hidden /> : null}
+          <button
+            type="button"
+            onClick={() => onOpenProfile?.(company)}
+            aria-label={`${company.name} 소개 보기`}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-400"
+          >
+            <Info size={15} aria-hidden />
+          </button>
         </div>
       </div>
 
@@ -63,6 +75,37 @@ export function CompanyCard({ company, investedAmount, evaluatedAmount, canInves
           </p>
         </div>
       </div>
-    </Wrapper>
+
+      <button
+        type="button"
+        disabled={!canInvest}
+        onClick={() => onSelect?.(company)}
+        className="mt-4 flex h-[46px] w-full items-center justify-center gap-1 rounded-button bg-slate-950 text-sm font-bold text-white transition active:scale-[0.99] disabled:bg-slate-100 disabled:text-slate-400"
+      >
+        {canInvest ? "투자하기" : "투자 마감"}
+        {canInvest ? <ChevronRight size={16} aria-hidden /> : null}
+      </button>
+    </article>
+  );
+}
+
+function CompanyAvatar({ company }: { company: Company }) {
+  if (company.logoUrl) {
+    return (
+      <img
+        src={company.logoUrl}
+        alt=""
+        className="h-12 w-12 shrink-0 rounded-full object-cover ring-1 ring-slate-200"
+      />
+    );
+  }
+
+  return (
+    <div
+      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-base font-black text-white shadow-soft"
+      style={{ backgroundColor: company.color }}
+    >
+      {company.name.slice(0, 1)}
+    </div>
   );
 }

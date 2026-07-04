@@ -26,9 +26,14 @@ create table if not exists public.companies (
   total_investment numeric not null default 0,
   company_rank integer,
   color text not null default '#2563eb',
+  logo_url text not null default '',
+  tagline text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.companies add column if not exists logo_url text not null default '';
+alter table public.companies add column if not exists tagline text not null default '';
 
 create table if not exists public.users (
   id text primary key,
@@ -152,19 +157,21 @@ on conflict (id) do update set
   paused_remaining_seconds = null,
   updated_at = now();
 
-insert into public.companies (id, name, initial_capital, current_value, previous_value, color)
+insert into public.companies (id, name, initial_capital, current_value, previous_value, color, logo_url, tagline)
 values
-  ('sanghyun', '상현회사', 5000, 5000, 5000, '#e11d48'),
-  ('seoyoung', '서영회사', 5000, 5000, 5000, '#2563eb'),
-  ('ain', '아인회사', 5000, 5000, 5000, '#16a34a'),
-  ('donghyun', '동현회사', 5000, 5000, 5000, '#f97316'),
-  ('yeil', '예일회사', 4500, 4500, 4500, '#7c3aed')
+  ('sanghyun', '상현회사', 5000, 5000, 5000, '#e11d48', '', '빠른 실행력으로 시장을 선점하는 성장형 기업'),
+  ('seoyoung', '서영회사', 5000, 5000, 5000, '#2563eb', '', '안정적인 재무와 균형 잡힌 사업 포트폴리오'),
+  ('ain', '아인회사', 5000, 5000, 5000, '#16a34a', '', '기술과 브랜드 신뢰를 함께 키우는 혁신 기업'),
+  ('donghyun', '동현회사', 5000, 5000, 5000, '#f97316', '', '공격적인 투자로 판을 흔드는 도전형 기업'),
+  ('yeil', '예일회사', 4500, 4500, 4500, '#7c3aed', '', '작지만 민첩하게 기회를 포착하는 실속형 기업')
 on conflict (id) do update set
   name = excluded.name,
   initial_capital = excluded.initial_capital,
   current_value = excluded.current_value,
   previous_value = excluded.previous_value,
   color = excluded.color,
+  logo_url = excluded.logo_url,
+  tagline = excluded.tagline,
   total_investment = 0,
   updated_at = now();
 
