@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import type { GameState } from "../types";
+import { buildMarketChartData } from "../utils/chartData";
 import { formatPercent, formatValue, formatWon } from "../utils/format";
 
 type DisplayPageProps = {
@@ -49,13 +50,7 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
     );
   }
 
-  const chartData = state.companies[0]?.history.map((point, index) => {
-    const row: Record<string, string | number> = { label: `${point.year}년차-${point.tick}` };
-    state.companies.forEach((company) => {
-      row[company.name] = company.history[index]?.value ?? company.currentValue;
-    });
-    return row;
-  });
+  const chartData = buildMarketChartData(state.companies);
   const personalRanking = state.participants.slice(5, 10);
 
   return (
@@ -121,7 +116,7 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                   rank={company.rank}
                   name={company.name}
                   main={formatValue(company.currentValue)}
-                  sub={`${formatPercent(company.changeRate)} · ${formatWon(company.totalInvestment)}`}
+                  sub={formatPercent(company.changeRate)}
                 />
               ))}
             </Panel>
@@ -132,7 +127,7 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                   <RankLine
                     key={user.id}
                     rank={user.personalRank ?? 0}
-                    name={user.nickname}
+                    name={user.realName}
                     main={formatWon(user.totalAsset)}
                     sub={`${user.companyName} · ${formatPercent(user.returnRate)}`}
                   />
@@ -186,18 +181,17 @@ function Ending({ state, connected }: { state: GameState; connected: boolean }) 
             <p className="mt-3 text-5xl font-bold">{topCompany?.name ?? "-"}</p>
             <div className="mt-6 grid grid-cols-3 gap-3">
               <Info label="최종 가치" value={topCompany ? formatValue(topCompany.currentValue) : "-"} />
-              <Info label="총 투자금" value={topCompany ? formatWon(topCompany.totalInvestment) : "-"} />
               <Info label="소속 평균 자산" value={topCompany ? formatWon(topCompany.memberAverageAsset) : "-"} />
             </div>
             <p className="mt-6 text-sm font-semibold text-slate-500">소속 회원</p>
             <p className="mt-2 text-xl font-bold">
-              {companyMembers.length === 0 ? "없음" : companyMembers.map((user) => user.nickname).join(", ")}
+              {companyMembers.length === 0 ? "없음" : companyMembers.map((user) => user.realName).join(", ")}
             </p>
           </section>
 
           <section className="rounded-card bg-white p-8 text-slate-950">
             <p className="text-lg font-semibold text-slate-500">개인 자산 1위</p>
-            <p className="mt-3 text-5xl font-bold">{winner?.nickname ?? "-"}</p>
+            <p className="mt-3 text-5xl font-bold">{winner?.realName ?? "-"}</p>
             <div className="mt-6 grid grid-cols-3 gap-3">
               <Info label="소속 회사" value={winner?.companyName ?? "-"} />
               <Info label="최종 자산" value={winner ? formatWon(winner.totalAsset) : "-"} />

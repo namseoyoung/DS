@@ -115,20 +115,26 @@ export const isInvestableStatus = (status: GameStatus) =>
 
 export const clampCompanyValue = (value: number) => Math.max(500, Math.round(value));
 
+const clampRate = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
 export const calculateRealtimeValue = (
   currentValue: number,
   totalInvestment: number,
   companyInvestment: number,
-  tick: number,
+  totalInvestors: number,
+  companyInvestors: number,
 ) => {
-  if (totalInvestment <= 0) {
+  if (totalInvestment <= 0 || totalInvestors <= 0) {
     return clampCompanyValue(currentValue);
   }
 
-  const share = companyInvestment / totalInvestment;
+  const investmentShare = companyInvestment / totalInvestment;
+  const investorShare = companyInvestors / totalInvestors;
+  const share = investmentShare * 0.65 + investorShare * 0.35;
   const baseline = 1 / companySeeds.length;
-  const demandImpact = (share - baseline) * 260;
-  const pulse = Math.sin(tick * 1.7 + currentValue / 300) * 35;
+  const demandPressure = (share - baseline) / baseline;
+  const demandImpactRate = clampRate(demandPressure * 0.0035, -0.0035, 0.008);
 
-  return clampCompanyValue(currentValue + demandImpact + pulse);
+  return clampCompanyValue(currentValue * (1 + demandImpactRate));
 };

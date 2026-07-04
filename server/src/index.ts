@@ -265,9 +265,10 @@ setInterval(async () => {
       guard.closed = true;
       await store.publishAnnouncement("투자가 종료되었습니다.");
       await store.setStatus("INVEST_CLOSED");
-      await store.settleYear({});
       if (state.year === 4) {
         await store.setStatus("FINISHED");
+      } else {
+        await store.settleYear({});
       }
       await broadcastState();
     }

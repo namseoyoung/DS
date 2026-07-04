@@ -14,6 +14,7 @@ import { HeaderStats } from "../components/HeaderStats";
 import { InvestmentSheet } from "../components/InvestmentSheet";
 import { api } from "../lib/api";
 import type { Company, CompanyId, GameState, User } from "../types";
+import { buildMarketChartData } from "../utils/chartData";
 import { formatPercent, formatValue, formatWon } from "../utils/format";
 
 type ParticipantPageProps = {
@@ -82,14 +83,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   );
 
   const chartData = useMemo(() => {
-    if (!state?.companies.length) return [];
-    return state.companies[0].history.map((point, index) => {
-      const row: Record<string, string | number> = { label: `${point.year}년차-${point.tick}` };
-      state.companies.forEach((company) => {
-        row[company.name] = company.history[index]?.value ?? company.currentValue;
-      });
-      return row;
-    });
+    return buildMarketChartData(state?.companies ?? []);
   }, [state?.companies]);
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
@@ -212,10 +206,9 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
       ) : null}
 
       <HeaderStats
-        nickname={user.nickname}
+        realName={user.realName}
         companyName={user.companyName}
         cash={user.cash}
-        evaluatedAmount={user.evaluatedAmount}
         totalAsset={user.totalAsset}
         returnRate={user.returnRate}
         year={state.year}
@@ -331,9 +324,8 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
                       {formatPercent(holding.returnRate)}
                     </span>
                   </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                     <Info label="투자금" value={formatWon(holding.investedAmount)} />
-                    <Info label="평가액" value={formatWon(holding.evaluatedAmount)} />
                     <Info label="기업가치" value={formatValue(holding.currentValue)} />
                   </div>
                   <button
@@ -365,7 +357,6 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
                   key={company.id}
                   company={company}
                   investedAmount={holding?.investedAmount ?? 0}
-                  evaluatedAmount={holding?.evaluatedAmount ?? 0}
                   canInvest={canInvest}
                   onSelect={setSelectedCompany}
                 />

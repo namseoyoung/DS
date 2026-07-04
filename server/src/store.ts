@@ -137,6 +137,14 @@ const getInvestmentAmount = (investment: DbInvestment) =>
 
 const canWithdrawInStatus = (status: GameStatus) => status !== "FINISHED";
 
+const getUniqueInvestorCount = (investments: DbInvestment[]) =>
+  new Set(investments.map((investment) => investment.user_id)).size;
+
+const calculateAssetReturnRate = (totalAsset: number, baselineAsset: number) => {
+  if (baselineAsset <= 0) return 0;
+  return ((totalAsset - baselineAsset) / baselineAsset) * 100;
+};
+
 const calculateEvaluatedInvestment = (
   investment: DbInvestment,
   company: Pick<DbCompany, "initial_capital" | "current_value">,
@@ -213,7 +221,7 @@ const calculateState = (
     };
   });
 
-  const usersWithoutRank = usersRaw.map<User>((user) => {
+    const usersWithoutRank = usersRaw.map<User>((user) => {
     const companyName =
       companiesWithoutRank.find((company) => company.id === user.company_id)?.name ?? user.company_id;
     const holdings: Holding[] = companiesWithoutRank.map((company) => {
@@ -252,6 +260,7 @@ const calculateState = (
     const investedAmount = holdings.reduce((sum, holding) => sum + holding.investedAmount, 0);
     const evaluatedAmount = holdings.reduce((sum, holding) => sum + holding.evaluatedAmount, 0);
     const totalAsset = user.cash + evaluatedAmount;
+    const baselineAsset = Number(user.total_asset ?? 0) > 0 ? Number(user.total_asset) : totalAsset;
 
     return {
       id: user.id,
@@ -264,8 +273,7 @@ const calculateState = (
       investedAmount,
       evaluatedAmount,
       totalAsset,
-      returnRate:
-        investedAmount === 0 ? 0 : ((evaluatedAmount - investedAmount) / investedAmount) * 100,
+      returnRate: calculateAssetReturnRate(totalAsset, baselineAsset),
       isOnline: user.is_online,
       role: user.role,
       holdings,
@@ -450,7 +458,7 @@ class MemoryStore implements Store {
       });
     }
 
-    const log = this.addLog(user.id, user.nickname, company.id, company.name, amount, "INVEST");
+    const log = this.addLog(user.id, user.real_name, company.id, company.name, amount, "INVEST");
     this.session.updated_at = now();
     return {
       logId: log.id,
@@ -493,7 +501,7 @@ class MemoryStore implements Store {
       (investment) => !(investment.user_id === userId && investment.company_id === companyId),
     );
 
-    const log = this.addLog(user.id, user.nickname, company.id, company.name, Math.round(withdrawalAmount), "WITHDRAW");
+    const log = this.addLog(user.id, user.real_name, company.id, company.name, Math.round(withdrawalAmount), "WITHDRAW");
     this.session.updated_at = now();
     return {
       logId: log.id,
@@ -538,12 +546,16 @@ class MemoryStore implements Store {
       const salary = salaryTable[user.company_id][user.rank];
       user.cash += salary;
       const company = this.companies.find((item) => item.id === user.company_id)!;
-      this.addLog(user.id, user.nickname, company.id, company.name, salary, "SALARY");
+      this.addLog(user.id, user.real_name, company.id, company.name, salary, "SALARY");
     }
     await this.setStatus("SALARY_PAID");
   }
 
   async settleYear(changes: Partial<Record<CompanyId, number>>) {
+    if (this.session.year >= 4) {
+      throw new Error("4년차는 변동률 정산을 사용하지 않고 실시간 투자금만 반영합니다.");
+    }
+
     for (const company of this.companies) {
       const change = changes[company.id] ?? 0;
       const nextValue = clampCompanyValue(company.current_value * (1 + change / 100));
@@ -573,6 +585,15 @@ class MemoryStore implements Store {
   }
 
   async advanceYear() {
+    const state = await this.getState();
+    for (const participant of state.participants) {
+      const user = this.users.find((item) => item.id === participant.id);
+      if (user) {
+        user.total_asset = participant.totalAsset;
+        user.evaluated_amount = participant.evaluatedAmount;
+        user.profit_rate = participant.returnRate;
+      }
+    }
     this.session.year = Math.min(4, this.session.year + 1);
     await this.setStatus(this.session.year === 4 ? "REALTIME_ROUND" : "YEAR_ENDED");
   }
@@ -591,20 +612,28 @@ class MemoryStore implements Store {
   }
 
   async realtimeTick() {
-    const totalInvestment = this.investments.reduce(
+    const realtimeInvestments = this.investments.filter(
+      (investment) => investment.year === this.session.year,
+    );
+    const totalInvestment = realtimeInvestments.reduce(
       (sum, investment) => sum + getInvestmentAmount(investment),
       0,
     );
+    const totalInvestors = getUniqueInvestorCount(realtimeInvestments);
     for (const company of this.companies) {
-      const companyInvestment = this.investments
-        .filter((investment) => investment.company_id === company.id)
+      const companyInvestments = realtimeInvestments.filter(
+        (investment) => investment.company_id === company.id,
+      );
+      const companyInvestment = companyInvestments
         .reduce((sum, investment) => sum + getInvestmentAmount(investment), 0);
+      const companyInvestors = getUniqueInvestorCount(companyInvestments);
       const tick = this.history.filter((point) => point.company_id === company.id).length;
       const nextValue = calculateRealtimeValue(
         company.current_value,
         totalInvestment,
         companyInvestment,
-        tick,
+        totalInvestors,
+        companyInvestors,
       );
       company.previous_value = company.current_value;
       company.current_value = nextValue;
@@ -900,7 +929,7 @@ class SupabaseStore extends MemoryStore {
       .from("transactions")
       .insert({
         user_id: userId,
-        user_name: user.nickname,
+        user_name: user.realName,
         company_id: companyId,
         company_name: company.name,
         amount,
@@ -965,7 +994,7 @@ class SupabaseStore extends MemoryStore {
       .from("transactions")
       .insert({
         user_id: userId,
-        user_name: user.nickname,
+        user_name: user.realName,
         company_id: companyId,
         company_name: company.name,
         amount: withdrawalAmount,
@@ -1035,7 +1064,7 @@ class SupabaseStore extends MemoryStore {
       await this.supabase.from("users").update({ cash: user.cash + salary }).eq("id", user.id);
       await this.supabase.from("transactions").insert({
         user_id: user.id,
-        user_name: user.nickname,
+        user_name: user.realName,
         company_id: user.companyId,
         company_name: user.companyName,
         amount: salary,
@@ -1048,6 +1077,10 @@ class SupabaseStore extends MemoryStore {
 
   async settleYear(changes: Partial<Record<CompanyId, number>>) {
     const state = await this.getState();
+    if (state.year >= 4) {
+      throw new Error("4년차는 변동률 정산을 사용하지 않고 실시간 투자금만 반영합니다.");
+    }
+
     const nextCompanies = new Map<CompanyId, Company>();
     for (const company of state.companies) {
       const change = changes[company.id] ?? 0;
@@ -1107,6 +1140,18 @@ class SupabaseStore extends MemoryStore {
   async advanceYear() {
     const state = await this.getState();
     const nextYear = Math.min(4, state.year + 1);
+    for (const participant of state.participants) {
+      await this.supabase
+        .from("users")
+        .update({
+          total_asset: participant.totalAsset,
+          evaluated_amount: participant.evaluatedAmount,
+          profit_rate: participant.returnRate,
+          updated_at: now(),
+        })
+        .eq("id", participant.id)
+        .eq("role", "participant");
+    }
     await this.supabase
       .from("game_status")
       .update({
@@ -1146,13 +1191,33 @@ class SupabaseStore extends MemoryStore {
 
   async realtimeTick() {
     const state = await this.getState();
-    const totalInvestment = state.companies.reduce((sum, company) => sum + company.totalInvestment, 0);
+    const { data: investments } = await this.supabase
+      .from("investments")
+      .select("*")
+      .eq("year", state.year);
+    const realtimeInvestments = ((investments ?? []) as DbInvestment[]).filter(
+      (investment) => investment.year === state.year,
+    );
+    const totalInvestment = realtimeInvestments.reduce(
+      (sum, investment) => sum + getInvestmentAmount(investment),
+      0,
+    );
+    const totalInvestors = getUniqueInvestorCount(realtimeInvestments);
     for (const company of state.companies) {
+      const companyInvestments = realtimeInvestments.filter(
+        (investment) => investment.company_id === company.id,
+      );
+      const companyInvestment = companyInvestments.reduce(
+        (sum, investment) => sum + getInvestmentAmount(investment),
+        0,
+      );
+      const companyInvestors = getUniqueInvestorCount(companyInvestments);
       const nextValue = calculateRealtimeValue(
         company.currentValue,
         totalInvestment,
-        company.totalInvestment,
-        company.history.length,
+        companyInvestment,
+        totalInvestors,
+        companyInvestors,
       );
       await this.supabase
         .from("companies")
