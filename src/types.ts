@@ -117,6 +117,7 @@ export type GameState = {
 export type LoginResponse = {
   user: User;
   state: GameState;
+  sessionToken: string;
 };
 
 export type AdminLoginResponse = {

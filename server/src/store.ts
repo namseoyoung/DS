@@ -106,6 +106,7 @@ export type Store = {
   initialize(): Promise<void>;
   getState(): Promise<GameState>;
   login(id: string, password: string): Promise<User>;
+  setOnline(userId: string, isOnline: boolean): Promise<void>;
   invest(userId: string, companyId: CompanyId, amount: number): Promise<TransactionLog>;
   withdraw(userId: string, companyId: CompanyId): Promise<TransactionLog>;
   setStatus(status: GameStatus, durationSeconds?: number): Promise<void>;
@@ -461,6 +462,14 @@ class MemoryStore implements Store {
     this.session.updated_at = now();
     const state = await this.getState();
     return state.users.find((item) => item.id === user.id)!;
+  }
+
+  async setOnline(userId: string, isOnline: boolean) {
+    const user = this.users.find((item) => item.id === userId);
+    if (user) {
+      user.is_online = isOnline;
+      this.session.updated_at = now();
+    }
   }
 
   async invest(userId: string, companyId: CompanyId, amount: number) {
@@ -987,6 +996,10 @@ class SupabaseStore extends MemoryStore {
     if (!user) throw new Error("아이디 또는 비밀번호가 올바르지 않습니다.");
     await this.supabase.from("users").update({ is_online: true }).eq("id", id);
     return (await this.getState()).users.find((item) => item.id === id)!;
+  }
+
+  async setOnline(userId: string, isOnline: boolean) {
+    await this.supabase.from("users").update({ is_online: isOnline }).eq("id", userId);
   }
 
   async invest(userId: string, companyId: CompanyId, amount: number) {

@@ -10,9 +10,10 @@ import {
   SkipBack,
   SkipForward,
   Trophy,
+  LogOut,
 } from "lucide-react";
 import { FormEvent, ReactNode, useMemo, useState } from "react";
-import { api } from "../lib/api";
+import { api, connectRealtime, disconnectRealtime } from "../lib/api";
 import type { Company, CompanyId, GameState, GameStatus, JobRank, User } from "../types";
 import { formatPercent, formatValue, formatWon } from "../utils/format";
 
@@ -81,11 +82,30 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
         return;
       }
       sessionStorage.setItem("adminId", response.user.id);
+      sessionStorage.setItem("sessionUserId", response.user.id);
+      sessionStorage.setItem("sessionToken", response.sessionToken);
+      connectRealtime(response.user.id, response.sessionToken);
       setAdminId(response.user.id);
       setState(response.state);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "관리자 로그인에 실패했습니다.");
     }
+  };
+
+  const handleLogout = async () => {
+    const sessionToken = sessionStorage.getItem("sessionToken") ?? "";
+    if (adminId && sessionToken) {
+      try {
+        setState(await api.logout(adminId, sessionToken));
+      } catch {
+        // Local logout should still clear this device even if the network request fails.
+      }
+    }
+    disconnectRealtime();
+    sessionStorage.removeItem("adminId");
+    sessionStorage.removeItem("sessionUserId");
+    sessionStorage.removeItem("sessionToken");
+    setAdminId("");
   };
 
   const run = async (action: () => Promise<GameState>, confirmText?: string) => {
@@ -186,9 +206,19 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
               </p>
             ) : null}
           </div>
-          <a href="/display" className="flex h-[52px] items-center rounded-button bg-blue-600 px-4 text-sm font-bold text-white">
-            전광판 열기
-          </a>
+          <div className="flex gap-2">
+            <a href="/display" className="flex h-[52px] items-center rounded-button bg-blue-600 px-4 text-sm font-bold text-white">
+              전광판 열기
+            </a>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex h-[52px] items-center gap-2 rounded-button border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700"
+            >
+              <LogOut size={16} aria-hidden />
+              로그아웃
+            </button>
+          </div>
         </section>
       </header>
 

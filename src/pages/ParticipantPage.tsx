@@ -13,7 +13,7 @@ import {
 import { CompanyCard } from "../components/CompanyCard";
 import { HeaderStats } from "../components/HeaderStats";
 import { InvestmentSheet } from "../components/InvestmentSheet";
-import { api } from "../lib/api";
+import { api, connectRealtime, disconnectRealtime } from "../lib/api";
 import type { Company, CompanyId, GameState, User } from "../types";
 import { formatPercent, formatValue, formatWon } from "../utils/format";
 
@@ -112,6 +112,9 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
     try {
       const response = await api.login(id, password);
       sessionStorage.setItem("userId", response.user.id);
+      sessionStorage.setItem("sessionUserId", response.user.id);
+      sessionStorage.setItem("sessionToken", response.sessionToken);
+      connectRealtime(response.user.id, response.sessionToken);
       setUserId(response.user.id);
       setState(response.state);
       if (response.user.role === "admin") {
@@ -123,6 +126,23 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
     } finally {
       setIsLoggingIn(false);
     }
+  };
+
+  const handleLogout = async () => {
+    const sessionToken = sessionStorage.getItem("sessionToken") ?? "";
+    if (userId && sessionToken) {
+      try {
+        const response = await api.logout(userId, sessionToken);
+        setState(response);
+      } catch {
+        // Local logout should still clear this device even if the network request fails.
+      }
+    }
+    disconnectRealtime();
+    sessionStorage.removeItem("userId");
+    sessionStorage.removeItem("sessionUserId");
+    sessionStorage.removeItem("sessionToken");
+    setUserId(null);
   };
 
   const handleInvest = async (companyId: CompanyId, amount: number) => {
@@ -238,6 +258,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
         returnRate={user.returnRate}
         year={state.year}
         connected={connected}
+        onLogout={handleLogout}
       />
 
       <section className="mx-auto max-w-md space-y-5 px-5 pb-8 pt-5">

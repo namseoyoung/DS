@@ -17,12 +17,28 @@ const io = new Server(httpServer, {
 });
 const store = createStore();
 
+type ActiveSession = {
+  token: string;
+  userId: string;
+  role: "participant" | "admin";
+  sockets: Set<string>;
+  createdAt: number;
+};
+
+const activeSessions = new Map<string, ActiveSession>();
+const LOGIN_GRACE_MS = 15000;
+
+const getActiveParticipantCount = () =>
+  [...activeSessions.values()].filter(
+    (session) => session.role === "participant" && session.sockets.size > 0,
+  ).length;
+
 app.use(cors({ origin: clientOrigin }));
 app.use(express.json());
 
 const withConnectedCount = async () => {
   const state = await store.getState();
-  return { ...state, connectedCount: io.sockets.sockets.size };
+  return { ...state, connectedCount: getActiveParticipantCount() };
 };
 
 const broadcastState = async () => {
@@ -70,9 +86,41 @@ app.post("/api/login", async (request, response, next) => {
       return;
     }
 
+    const existingSession = activeSessions.get(id);
+    if (existingSession && (existingSession.sockets.size > 0 || Date.now() - existingSession.createdAt < LOGIN_GRACE_MS)) {
+      response.status(409).json({ message: "이미 다른 화면에서 로그인 중입니다. 먼저 로그아웃해 주세요." });
+      return;
+    }
+
     const user = await store.login(id, password);
+    const sessionToken = crypto.randomUUID();
+    activeSessions.set(user.id, {
+      token: sessionToken,
+      userId: user.id,
+      role: user.role,
+      sockets: new Set(),
+      createdAt: Date.now(),
+    });
     const state = await broadcastState();
-    response.json({ user, state });
+    response.json({ user, state, sessionToken });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/logout", async (request, response, next) => {
+  try {
+    const userId = String(request.body.userId ?? "");
+    const sessionToken = String(request.body.sessionToken ?? "");
+    const session = activeSessions.get(userId);
+    if (session && session.token === sessionToken) {
+      activeSessions.delete(userId);
+      for (const socket of io.sockets.sockets.values()) {
+        if (socket.data.userId === userId) socket.disconnect(true);
+      }
+    }
+    if (userId) await store.setOnline(userId, false);
+    response.json(await broadcastState());
   } catch (error) {
     next(error);
   }
@@ -203,9 +251,37 @@ app.post("/api/admin/reset", async (request, response, next) => {
   }
 });
 
+io.use((socket, next) => {
+  const userId = String(socket.handshake.auth.userId ?? "");
+  const sessionToken = String(socket.handshake.auth.sessionToken ?? "");
+  const session = activeSessions.get(userId);
+  if (!userId || !sessionToken || !session || session.token !== sessionToken) {
+    next(new Error("로그인 세션이 만료되었습니다. 다시 로그인해 주세요."));
+    return;
+  }
+  socket.data.userId = userId;
+  next();
+});
+
 io.on("connection", async (socket) => {
+  const userId = String(socket.data.userId);
+  const session = activeSessions.get(userId);
+  if (session) {
+    session.sockets.add(socket.id);
+    await store.setOnline(userId, true);
+  }
   io.emit("game:state", await withConnectedCount());
+
   socket.on("disconnect", () => {
+    const currentSession = activeSessions.get(userId);
+    if (currentSession) {
+      currentSession.sockets.delete(socket.id);
+      if (currentSession.sockets.size === 0) {
+        activeSessions.delete(userId);
+        void store.setOnline(userId, false).then(() => broadcastState());
+        return;
+      }
+    }
     void broadcastState();
   });
 });

@@ -1,4 +1,4 @@
-import { Activity, Building2, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import { Activity, Building2, LogOut, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import { formatPercent, formatWon } from "../utils/format";
 
 type HeaderStatsProps = {
@@ -10,6 +10,7 @@ type HeaderStatsProps = {
   returnRate: number;
   year: number;
   connected: boolean;
+  onLogout?: () => void;
 };
 
 export function HeaderStats({
@@ -21,6 +22,7 @@ export function HeaderStats({
   returnRate,
   year,
   connected,
+  onLogout,
 }: HeaderStatsProps) {
   const isPositive = returnRate >= 0;
   const TrendIcon = isPositive ? TrendingUp : TrendingDown;
@@ -36,9 +38,20 @@ export function HeaderStats({
             </p>
             <h1 className="mt-1 text-2xl font-bold text-slate-950">{realName}</h1>
           </div>
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-950 text-white">
-            <Wallet size={20} aria-hidden />
-          </div>
+          {onLogout ? (
+            <button
+              type="button"
+              onClick={onLogout}
+              aria-label="로그아웃"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-950 text-white transition active:scale-95"
+            >
+              <LogOut size={19} aria-hidden />
+            </button>
+          ) : (
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-950 text-white">
+              <Wallet size={20} aria-hidden />
+            </div>
+          )}
         </div>
 
         <div className="rounded-card bg-slate-950 p-6 text-white shadow-soft">

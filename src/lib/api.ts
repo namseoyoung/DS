@@ -29,8 +29,19 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
 };
 
 export const socket = io(apiUrl, {
+  autoConnect: false,
   transports: ["websocket", "polling"],
 });
+
+export const connectRealtime = (userId: string, sessionToken: string) => {
+  socket.auth = { userId, sessionToken };
+  if (!socket.connected) socket.connect();
+};
+
+export const disconnectRealtime = () => {
+  socket.auth = {};
+  if (socket.connected) socket.disconnect();
+};
 
 const adminBody = (adminId: string, payload?: Record<string, unknown>) =>
   JSON.stringify({ adminId, ...payload });
@@ -41,6 +52,11 @@ export const api = {
     request<LoginResponse>("/api/login", {
       method: "POST",
       body: JSON.stringify({ id, password }),
+    }),
+  logout: (userId: string, sessionToken: string) =>
+    request<GameState>("/api/logout", {
+      method: "POST",
+      body: JSON.stringify({ userId, sessionToken }),
     }),
   invest: (userId: string, companyId: CompanyId, amount: number) =>
     request<{ log: TransactionLog; state: GameState }>("/api/investments", {
