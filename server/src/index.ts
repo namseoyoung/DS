@@ -25,13 +25,19 @@ type ActiveSession = {
   createdAt: number;
 };
 
-const activeSessions = new Map<string, ActiveSession>();
+const activeSessionsByToken = new Map<string, ActiveSession>();
+const participantSessionByUser = new Map<string, string>();
 const LOGIN_GRACE_MS = 15000;
 
 const getActiveParticipantCount = () =>
-  [...activeSessions.values()].filter(
+  [...activeSessionsByToken.values()].filter(
     (session) => session.role === "participant" && session.sockets.size > 0,
   ).length;
+
+const hasActiveSessionForUser = (userId: string) =>
+  [...activeSessionsByToken.values()].some(
+    (session) => session.userId === userId && session.sockets.size > 0,
+  );
 
 app.use(cors({ origin: clientOrigin }));
 app.use(express.json());
@@ -86,21 +92,25 @@ app.post("/api/login", async (request, response, next) => {
       return;
     }
 
-    const existingSession = activeSessions.get(id);
-    if (existingSession && (existingSession.sockets.size > 0 || Date.now() - existingSession.createdAt < LOGIN_GRACE_MS)) {
+    const user = await store.login(id, password);
+    const existingToken = participantSessionByUser.get(user.id);
+    const existingSession = existingToken ? activeSessionsByToken.get(existingToken) : undefined;
+    if (user.role === "participant" && existingSession && (existingSession.sockets.size > 0 || Date.now() - existingSession.createdAt < LOGIN_GRACE_MS)) {
       response.status(409).json({ message: "이미 다른 화면에서 로그인 중입니다. 먼저 로그아웃해 주세요." });
       return;
     }
 
-    const user = await store.login(id, password);
     const sessionToken = crypto.randomUUID();
-    activeSessions.set(user.id, {
+    activeSessionsByToken.set(sessionToken, {
       token: sessionToken,
       userId: user.id,
       role: user.role,
       sockets: new Set(),
       createdAt: Date.now(),
     });
+    if (user.role === "participant") {
+      participantSessionByUser.set(user.id, sessionToken);
+    }
     const state = await broadcastState();
     response.json({ user, state, sessionToken });
   } catch (error) {
@@ -112,14 +122,17 @@ app.post("/api/logout", async (request, response, next) => {
   try {
     const userId = String(request.body.userId ?? "");
     const sessionToken = String(request.body.sessionToken ?? "");
-    const session = activeSessions.get(userId);
-    if (session && session.token === sessionToken) {
-      activeSessions.delete(userId);
+    const session = activeSessionsByToken.get(sessionToken);
+    if (session && session.userId === userId) {
+      activeSessionsByToken.delete(sessionToken);
+      if (session.role === "participant") {
+        participantSessionByUser.delete(userId);
+      }
       for (const socket of io.sockets.sockets.values()) {
-        if (socket.data.userId === userId) socket.disconnect(true);
+        if (socket.data.sessionToken === sessionToken) socket.disconnect(true);
       }
     }
-    if (userId) await store.setOnline(userId, false);
+    if (userId && !hasActiveSessionForUser(userId)) await store.setOnline(userId, false);
     response.json(await broadcastState());
   } catch (error) {
     next(error);
@@ -254,18 +267,20 @@ app.post("/api/admin/reset", async (request, response, next) => {
 io.use((socket, next) => {
   const userId = String(socket.handshake.auth.userId ?? "");
   const sessionToken = String(socket.handshake.auth.sessionToken ?? "");
-  const session = activeSessions.get(userId);
-  if (!userId || !sessionToken || !session || session.token !== sessionToken) {
+  const session = activeSessionsByToken.get(sessionToken);
+  if (!userId || !sessionToken || !session || session.userId !== userId) {
     next(new Error("로그인 세션이 만료되었습니다. 다시 로그인해 주세요."));
     return;
   }
   socket.data.userId = userId;
+  socket.data.sessionToken = sessionToken;
   next();
 });
 
 io.on("connection", async (socket) => {
   const userId = String(socket.data.userId);
-  const session = activeSessions.get(userId);
+  const sessionToken = String(socket.data.sessionToken);
+  const session = activeSessionsByToken.get(sessionToken);
   if (session) {
     session.sockets.add(socket.id);
     await store.setOnline(userId, true);
@@ -273,12 +288,15 @@ io.on("connection", async (socket) => {
   io.emit("game:state", await withConnectedCount());
 
   socket.on("disconnect", () => {
-    const currentSession = activeSessions.get(userId);
+    const currentSession = activeSessionsByToken.get(sessionToken);
     if (currentSession) {
       currentSession.sockets.delete(socket.id);
       if (currentSession.sockets.size === 0) {
-        activeSessions.delete(userId);
-        void store.setOnline(userId, false).then(() => broadcastState());
+        activeSessionsByToken.delete(sessionToken);
+        if (currentSession.role === "participant") {
+          participantSessionByUser.delete(userId);
+        }
+        void store.setOnline(userId, hasActiveSessionForUser(userId)).then(() => broadcastState());
         return;
       }
     }
