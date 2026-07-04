@@ -1,4 +1,4 @@
-# 인생여(ㄱ)전 DB Schema
+﻿# 인생여전 DB Schema
 
 ## 1. 설계 원칙
 

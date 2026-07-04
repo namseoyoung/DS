@@ -1,4 +1,4 @@
-# 인생여(ㄱ)전 UI Guide
+﻿# 인생여전 UI Guide
 
 우선 디자인 철학은 [10_UI_DESIGN_PHILOSOPHY.md](./10_UI_DESIGN_PHILOSOPHY.md)를 따른다. 모든 참가자 화면은 Toss Securities 70%, Apple Stocks 20%, Game UI 10% 비율의 미니멀한 금융 앱 경험을 기준으로 판단한다.
 

@@ -1,6 +1,6 @@
-# Project Constitution
+﻿# Project Constitution
 
-## 인생여(ㄱ)전 개발 헌장
+## 인생여전 개발 헌장
 
 이 문서는 프로젝트의 모든 개발 방향을 정의한다.
 
