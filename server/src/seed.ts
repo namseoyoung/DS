@@ -12,11 +12,11 @@ export const companySeeds: Array<{
   logoUrl: string;
   tagline: string;
 }> = [
-  { id: "sanghyun", name: "상현회사", initialCapital: 5000, color: "#e11d48", logoUrl: "", tagline: "빠른 실행력으로 시장을 선점하는 성장형 기업" },
-  { id: "seoyoung", name: "서영회사", initialCapital: 5000, color: "#2563eb", logoUrl: "", tagline: "안정적인 재무와 균형 잡힌 사업 포트폴리오" },
-  { id: "ain", name: "아인회사", initialCapital: 5000, color: "#16a34a", logoUrl: "", tagline: "기술과 브랜드 신뢰를 함께 키우는 혁신 기업" },
-  { id: "donghyun", name: "동현회사", initialCapital: 5000, color: "#f97316", logoUrl: "", tagline: "공격적인 투자로 판을 흔드는 도전형 기업" },
-  { id: "yeil", name: "예일회사", initialCapital: 4500, color: "#7c3aed", logoUrl: "", tagline: "작지만 민첩하게 기회를 포착하는 실속형 기업" },
+  { id: "sanghyun", name: "상현회사", initialCapital: 5000, color: "#e11d48", logoUrl: "/company-profiles/sanghyun.png", tagline: "빠른 실행력으로 시장을 선점하는 성장형 기업" },
+  { id: "seoyoung", name: "서영회사", initialCapital: 5000, color: "#2563eb", logoUrl: "/company-profiles/seoyoung.png", tagline: "안정적인 재무와 균형 잡힌 사업 포트폴리오" },
+  { id: "ain", name: "아인회사", initialCapital: 5000, color: "#16a34a", logoUrl: "/company-profiles/ain.png", tagline: "기술과 브랜드 신뢰를 함께 키우는 혁신 기업" },
+  { id: "donghyun", name: "동현회사", initialCapital: 5000, color: "#f97316", logoUrl: "/company-profiles/donghyun.png", tagline: "공격적인 투자로 판을 흔드는 도전형 기업" },
+  { id: "yeil", name: "예일회사", initialCapital: 4500, color: "#7c3aed", logoUrl: "/company-profiles/yeil.png", tagline: "작지만 민첩하게 기회를 포착하는 실속형 기업" },
 ];
 
 const defaultSalary = {
