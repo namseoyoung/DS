@@ -221,16 +221,16 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
       {showAnnouncementToast ? (
-        <section className="fixed left-3 right-3 top-3 z-40 mx-auto max-w-md rounded-card bg-slate-950 p-6 text-white shadow-2xl">
+        <section className="fixed left-3 right-3 top-3 z-40 mx-auto max-w-md rounded-card bg-blue-600 p-6 text-white shadow-2xl">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-bold text-slate-400">공지</p>
+              <p className="text-xs font-bold text-blue-200">공지</p>
               <p className="mt-1 text-sm font-semibold leading-5">{latestAnnouncement.content}</p>
             </div>
             <button
               type="button"
               onClick={() => setDismissedAnnouncementId(latestAnnouncement.id)}
-              className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold"
+              className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold"
             >
               닫기
             </button>
