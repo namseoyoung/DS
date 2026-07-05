@@ -32,7 +32,7 @@ export function HeaderStats({
   const isProfitPositive = profitAmount >= 0;
 
   return (
-    <section className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-5 pb-4 pt-4 backdrop-blur">
+    <section className="border-b border-slate-200 bg-white px-5 pb-4 pt-4">
       <div className="mx-auto max-w-md">
         <div className="mb-4 flex items-center justify-between">
           <div>
