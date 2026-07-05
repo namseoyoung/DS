@@ -12,5 +12,8 @@ export const formatValue = (value: number) => `${formatNumber(value)}원`;
 export const formatSignedWon = (amount: number) =>
   `${amount > 0 ? "+" : ""}${formatWon(amount)}`;
 
-export const formatPercent = (value: number) =>
-  `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
+export const formatPercent = (value: number) => {
+  const rounded = Math.round(value * 100) / 100;
+  const formatted = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+  return `${rounded > 0 ? "+" : ""}${formatted}%`;
+};

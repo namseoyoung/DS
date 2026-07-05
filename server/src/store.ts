@@ -170,11 +170,16 @@ const getInvestmentAmount = (investment: DbInvestment) =>
 
 const calculateEvaluatedInvestment = (
   investment: DbInvestment,
-  company: Pick<DbCompany, "initial_capital" | "current_value" | "previous_value">,
+  company: Pick<DbCompany, "initial_capital" | "current_value" | "previous_value" | "change_rate">,
 ) => {
   const investedAmount = getInvestmentAmount(investment);
   const basisValue = company.previous_value > 0 ? company.previous_value : company.initial_capital;
-  const evaluatedAmount = basisValue > 0 ? investedAmount * (company.current_value / basisValue) : investedAmount;
+  const evaluatedAmount =
+    investment.year === 4
+      ? basisValue > 0
+        ? investedAmount * (company.current_value / basisValue)
+        : investedAmount
+      : investedAmount * (1 + Number(company.change_rate ?? 0) / 100);
   const profitRate =
     investedAmount === 0 ? 0 : ((evaluatedAmount - investedAmount) / investedAmount) * 100;
   return { investedAmount, evaluatedAmount, profitRate };
@@ -182,7 +187,7 @@ const calculateEvaluatedInvestment = (
 
 const calculateVisibleInvestment = (
   investment: DbInvestment,
-  company: Pick<DbCompany, "initial_capital" | "current_value" | "previous_value">,
+  company: Pick<DbCompany, "initial_capital" | "current_value" | "previous_value" | "change_rate">,
   useRealtimeValuation: boolean,
 ) => {
   if (useRealtimeValuation && investment.year === 4) {
@@ -322,6 +327,7 @@ const calculateState = (
               initial_capital: company.initialCapital,
               current_value: company.currentValue,
               previous_value: company.previousValue,
+              change_rate: company.changeRate,
             },
             useRealtimeValuation,
           );
@@ -604,6 +610,7 @@ class MemoryStore implements Store {
             initial_capital: company.initial_capital,
             current_value: company.current_value,
             previous_value: company.previous_value,
+            change_rate: company.change_rate,
           },
           this.session.year === 4,
         );
@@ -1319,6 +1326,7 @@ class SupabaseStore extends MemoryStore {
             initial_capital: company.initialCapital,
             current_value: company.currentValue,
             previous_value: company.previousValue,
+            change_rate: company.changeRate,
           },
           state.year === 4,
         );
@@ -1515,6 +1523,7 @@ class SupabaseStore extends MemoryStore {
         initial_capital: company.initialCapital,
         current_value: company.currentValue,
         previous_value: company.previousValue,
+        change_rate: company.changeRate,
       });
       const settledInvestment = {
         ...investment,
@@ -1682,6 +1691,7 @@ class SupabaseStore extends MemoryStore {
         initial_capital: company.initialCapital,
         current_value: company.currentValue,
         previous_value: company.previousValue,
+        change_rate: company.changeRate,
       });
       const payout = Math.max(0, Math.floor(valuation.evaluatedAmount));
       payoutsByUser.set(user.id, (payoutsByUser.get(user.id) ?? 0) + payout);
