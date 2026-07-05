@@ -260,7 +260,10 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
             </label>
             {state.companies.map((company) => (
               <label key={company.id}>
-                <span className="text-xs font-semibold text-slate-500">{company.name} 변동률</span>
+                <span className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-500">
+                  <span>{company.name} 변동률</span>
+                  <span className="text-blue-600">이번 투자 {formatWon(company.currentYearInvestment)}</span>
+                </span>
                 <input
                   value={settlement[company.id] ?? ""}
                   onChange={(event) => setSettlement((current) => ({ ...current, [company.id]: event.target.value }))}
@@ -360,8 +363,8 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
                   key={company.id}
                   rank={company.rank}
                   name={company.name}
-                  value={`${formatValue(company.currentValue)} · ${formatWon(company.totalInvestment)}`}
-                  caption={formatPercent(company.changeRate)}
+                  value={`${formatValue(company.currentValue)} · 이번 투자 ${formatWon(company.currentYearInvestment)}`}
+                  caption={`누적 ${formatWon(company.totalInvestment)} · ${formatPercent(company.changeRate)}`}
                 />
               ))}
             </Panel>
@@ -392,6 +395,8 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
                     </div>
                   </div>
                   <p className="mt-3 text-sm text-slate-500">현재 가치 {formatValue(company.currentValue)}</p>
+                  <p className="text-sm font-bold text-blue-600">이번 투자 {formatWon(company.currentYearInvestment)}</p>
+                  <p className="text-sm text-slate-500">누적 투자 {formatWon(company.totalInvestment)}</p>
                   <p className="text-sm text-slate-500">초기 자본 {formatValue(company.initialCapital)}</p>
                 </button>
               ))}

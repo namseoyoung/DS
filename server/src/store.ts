@@ -237,6 +237,9 @@ const calculateState = (
     const totalInvestment = investments
       .filter((investment) => investment.company_id === company.id)
       .reduce((sum, investment) => sum + getInvestmentAmount(investment), 0);
+    const currentYearInvestment = investments
+      .filter((investment) => investment.company_id === company.id && investment.year === session.year)
+      .reduce((sum, investment) => sum + getInvestmentAmount(investment), 0);
     const changeRate =
       company.previous_value === 0
         ? 0
@@ -250,6 +253,7 @@ const calculateState = (
       previousValue: company.previous_value,
       changeRate,
       totalInvestment,
+      currentYearInvestment,
       rank: 0,
       color: company.color,
       logoUrl: company.logo_url ?? "",

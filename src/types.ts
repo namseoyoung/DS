@@ -32,6 +32,7 @@ export type Company = {
   previousValue: number;
   changeRate: number;
   totalInvestment: number;
+  currentYearInvestment: number;
   rank: number;
   color: string;
   logoUrl: string;
