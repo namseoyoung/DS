@@ -488,6 +488,8 @@ function Info({ label, value, valueClassName = "" }: { label: string; value: str
 }
 
 function CompanyProfileSheet({ company, onClose }: { company: Company | null; onClose: () => void }) {
+  const [isImageOpen, setIsImageOpen] = useState(false);
+
   if (!company) return null;
 
   return (
@@ -499,7 +501,18 @@ function CompanyProfileSheet({ company, onClose }: { company: Company | null; on
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
             {company.logoUrl ? (
-              <img src={company.logoUrl} alt="" className="h-14 w-14 rounded-full object-cover ring-1 ring-slate-200" />
+              <button
+                type="button"
+                onClick={() => setIsImageOpen(true)}
+                aria-label={`${company.name} 프로필 사진 원본 보기`}
+                className="shrink-0 rounded-full transition active:scale-95"
+              >
+                <img
+                  src={company.logoUrl}
+                  alt=""
+                  className="h-14 w-14 rounded-full object-cover ring-1 ring-slate-200"
+                />
+              </button>
             ) : (
               <div className="flex h-14 w-14 items-center justify-center rounded-full text-lg font-black text-white" style={{ backgroundColor: company.color }}>
                 {company.name.slice(0, 1)}
@@ -538,6 +551,27 @@ function CompanyProfileSheet({ company, onClose }: { company: Company | null; on
           <Info label="변동률" value={formatPercent(company.changeRate)} />
         </div>
       </div>
+      {company.logoUrl && isImageOpen ? (
+        <section
+          className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/95 px-4 py-8"
+          onClick={() => setIsImageOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setIsImageOpen(false)}
+            aria-label="닫기"
+            className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white"
+          >
+            <X size={22} aria-hidden />
+          </button>
+          <img
+            src={company.logoUrl}
+            alt={`${company.name} 프로필 사진`}
+            className="max-h-[82vh] max-w-full rounded-[20px] object-contain shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </section>
+      ) : null}
     </section>
   );
 }
