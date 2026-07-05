@@ -11,6 +11,7 @@ import {
   SkipForward,
   Trophy,
   LogOut,
+  X,
 } from "lucide-react";
 import { FormEvent, ReactNode, useMemo, useState } from "react";
 import { api, connectRealtime, disconnectRealtime } from "../lib/api";
@@ -57,6 +58,7 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
   const [duration, setDuration] = useState("600");
   const [settlement, setSettlement] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [isRankingSheetOpen, setIsRankingSheetOpen] = useState(false);
 
   const admin = state?.users.find((user) => user.id === adminId && user.role === "admin");
 
@@ -359,8 +361,21 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
           </section>
 
           <section className="space-y-5">
-            <Panel title="개인 랭킹">
-              {state.participants.slice(0, 8).map((user) => (
+            <Panel
+              title="개인 랭킹"
+              action={
+                state.participants.length > 5 ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsRankingSheetOpen(true)}
+                    className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600"
+                  >
+                    자세히 보기
+                  </button>
+                ) : null
+              }
+            >
+              {state.participants.slice(0, 5).map((user) => (
                 <RankItem
                   key={user.id}
                   rank={user.personalRank ?? 0}
@@ -462,7 +477,48 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
           </section>
         </div>
       </section>
+
+      {isRankingSheetOpen ? (
+        <PersonalRankingSheet participants={state.participants} onClose={() => setIsRankingSheetOpen(false)} />
+      ) : null}
     </main>
+  );
+}
+
+function PersonalRankingSheet({ participants, onClose }: { participants: User[]; onClose: () => void }) {
+  return (
+    <section className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/40 px-3 pb-3" onClick={onClose}>
+      <div
+        className="mx-auto max-h-[80vh] w-full max-w-md overflow-hidden rounded-card bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <div>
+            <p className="text-xs font-bold text-slate-400">전체 순위</p>
+            <h2 className="text-lg font-bold text-slate-950">개인 랭킹</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-500"
+            aria-label="닫기"
+          >
+            <X size={18} />
+          </button>
+        </header>
+        <div className="max-h-[64vh] space-y-2 overflow-y-auto px-5 py-4">
+          {participants.map((user) => (
+            <RankItem
+              key={user.id}
+              rank={user.personalRank ?? 0}
+              name={user.realName}
+              value={formatWon(user.totalAsset)}
+              caption={user.companyName}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -513,10 +569,13 @@ function Control({
   );
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
+function Panel({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
     <section className="rounded-card bg-white p-6 shadow-soft">
-      <h2 className="font-bold">{title}</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-bold">{title}</h2>
+        {action}
+      </div>
       <div className="mt-4 space-y-3">{children}</div>
     </section>
   );
