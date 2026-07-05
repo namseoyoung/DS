@@ -120,6 +120,8 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                   name={company.name}
                   main={formatValue(company.currentValue)}
                   sub={`${formatPercent(company.changeRate)} · ${formatWon(company.totalInvestment)}`}
+                  logoUrl={company.logoUrl}
+                  avatarColor={company.color}
                 />
               ))}
             </Panel>
@@ -232,20 +234,50 @@ function RankLine({
   name,
   main,
   sub,
+  logoUrl,
+  avatarColor,
 }: {
   rank: number;
   name: string;
   main: string;
   sub: string;
+  logoUrl?: string;
+  avatarColor?: string;
 }) {
   return (
-    <div className="grid grid-cols-[34px_minmax(0,1fr)] gap-2 rounded-button bg-slate-50 p-3 sm:grid-cols-[44px_minmax(0,1fr)_auto] sm:items-center">
-      <span className="text-xl font-bold text-slate-400 sm:text-2xl">{rank}</span>
-      <div>
-        <p className="truncate text-base font-bold sm:text-lg">{name}</p>
-        <p className="truncate text-xs text-slate-500 sm:text-sm">{sub}</p>
+    <div className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 rounded-button bg-slate-50 p-3 sm:grid-cols-[34px_minmax(0,1fr)_auto] sm:items-center">
+      <span className="self-center text-xl font-bold text-slate-400 sm:text-2xl">{rank}</span>
+      <div className="flex min-w-0 items-center gap-3">
+        {logoUrl || avatarColor ? (
+          <CompanyAvatar logoUrl={logoUrl} color={avatarColor} name={name} />
+        ) : null}
+        <div className="min-w-0">
+          <p className="truncate text-base font-bold sm:text-lg">{name}</p>
+          <p className="truncate text-xs text-slate-500 sm:text-sm">{sub}</p>
+        </div>
       </div>
       <span className="col-span-2 text-right text-lg font-bold sm:col-span-1 sm:text-xl">{main}</span>
+    </div>
+  );
+}
+
+function CompanyAvatar({ logoUrl, color, name }: { logoUrl?: string; color?: string; name: string }) {
+  if (logoUrl) {
+    return (
+      <img
+        src={logoUrl}
+        alt=""
+        className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-slate-200 sm:h-11 sm:w-11"
+      />
+    );
+  }
+
+  return (
+    <div
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black text-white sm:h-11 sm:w-11"
+      style={{ backgroundColor: color ?? "#0f172a" }}
+    >
+      {name.slice(0, 1)}
     </div>
   );
 }
