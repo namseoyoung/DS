@@ -19,7 +19,7 @@ import { HeaderStats } from "../components/HeaderStats";
 import { InvestmentSheet } from "../components/InvestmentSheet";
 import { api, connectRealtime, disconnectRealtime } from "../lib/api";
 import { authStorage } from "../lib/authStorage";
-import type { Company, CompanyId, GameState, TransactionLog, User, UserYearlyResult } from "../types";
+import type { Company, CompanyId, GameState, Holding, TransactionLog, User, UserYearlyResult } from "../types";
 import { formatPercent, formatSignedWon, formatValue, formatWon } from "../utils/format";
 
 type ParticipantPageProps = {
@@ -286,7 +286,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
           />
         </section>
 
-        <PersonalProfitFlow results={myYearlyResults} logs={myLogs} />
+        <PersonalProfitFlow results={myYearlyResults} logs={myLogs} holdings={activeHoldings} currentYear={state.year} currentCash={user.cash} />
 
         {showCountdown ? (
           <section
@@ -461,16 +461,45 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   );
 }
 
-function PersonalProfitFlow({ results, logs }: { results: UserYearlyResult[]; logs: TransactionLog[] }) {
+function PersonalProfitFlow({
+  results,
+  logs,
+  holdings,
+  currentYear,
+  currentCash,
+}: {
+  results: UserYearlyResult[];
+  logs: TransactionLog[];
+  holdings: Holding[];
+  currentYear: number;
+  currentCash: number;
+}) {
   const [isLogSheetOpen, setIsLogSheetOpen] = useState(false);
   const previewLogs = logs.slice(0, 3);
   const sortedResults = results.slice().sort((a, b) => a.year - b.year);
-  const totalGain = sortedResults.reduce((sum, result) => sum + Math.max(0, result.profitAmount), 0);
-  const totalLoss = sortedResults.reduce((sum, result) => sum + Math.abs(Math.min(0, result.profitAmount)), 0);
+  const hasCurrentYearResult = sortedResults.some((result) => result.year === currentYear);
+  const currentInvestedAmount = holdings.reduce((sum, holding) => sum + holding.investedAmount, 0);
+  const currentEvaluatedAmount = holdings.reduce((sum, holding) => sum + holding.evaluatedAmount, 0);
+  const currentProfitAmount = currentEvaluatedAmount - currentInvestedAmount;
+  const currentReturnRate = currentInvestedAmount === 0 ? 0 : (currentProfitAmount / currentInvestedAmount) * 100;
+  const currentFlowResult =
+    !hasCurrentYearResult && currentInvestedAmount > 0
+      ? {
+          year: currentYear,
+          profitAmount: currentProfitAmount,
+          withdrawnAmount: 0,
+          returnRate: currentReturnRate,
+          totalAsset: currentCash + currentEvaluatedAmount,
+          isPending: true,
+        }
+      : null;
+  const flowResults = currentFlowResult ? [...sortedResults, currentFlowResult] : sortedResults;
+  const totalGain = flowResults.reduce((sum, result) => sum + Math.max(0, result.profitAmount), 0);
+  const totalLoss = flowResults.reduce((sum, result) => sum + Math.abs(Math.min(0, result.profitAmount)), 0);
   const netProfit = totalGain - totalLoss;
   const totalWithdrawn = sortedResults.reduce((sum, result) => sum + result.withdrawnAmount, 0);
-  const chartData = sortedResults.map((result) => ({
-    label: String(result.year) + "년차",
+  const chartData = flowResults.map((result) => ({
+    label: String(result.year) + "년차" + ("isPending" in result && result.isPending ? " 진행 중" : ""),
     profitAmount: result.profitAmount,
     totalAsset: result.totalAsset,
     returnRate: result.returnRate,
