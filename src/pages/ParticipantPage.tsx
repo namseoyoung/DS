@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { CompanyCard } from "../components/CompanyCard";
+import { CompanyChart } from "../components/CompanyChart";
 import { HeaderStats } from "../components/HeaderStats";
 import { InvestmentSheet } from "../components/InvestmentSheet";
 import { api, connectRealtime, disconnectRealtime } from "../lib/api";
@@ -522,6 +523,17 @@ function CompanyProfileSheet({ company, onClose }: { company: Company | null; on
         <p className="mt-5 rounded-button bg-slate-50 px-4 py-4 text-sm font-semibold leading-6 text-slate-700">
           {company.tagline || "아직 등록된 한줄평이 없습니다."}
         </p>
+        <section className="mt-4 rounded-button border border-slate-100 bg-slate-50 px-4 py-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-bold text-slate-950">주식 변동 그래프</h3>
+            <span
+              className={`text-xs font-bold ${company.changeRate >= 0 ? "text-red-500" : "text-blue-500"}`}
+            >
+              {formatPercent(company.changeRate)}
+            </span>
+          </div>
+          <CompanyChart data={company.history} color={company.color} heightClassName="h-32" />
+        </section>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <Info label="현재 가치" value={formatValue(company.currentValue)} />
           <Info label="변동률" value={formatPercent(company.changeRate)} />
