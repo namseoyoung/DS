@@ -34,9 +34,9 @@ export function CompanyCard({ company, investedAmount, evaluatedAmount, canInves
             </div>
           </div>
         </button>
-        <div className="flex items-center gap-2 text-right">
+        <div className="flex min-w-0 max-w-[42%] items-center gap-2 text-right">
           <div>
-            <p className="text-lg font-bold text-slate-950">{formatValue(company.currentValue)}</p>
+            <p className="money-text text-right text-base font-bold text-slate-950 sm:text-lg">{formatValue(company.currentValue)}</p>
             <p
               className={`text-sm font-semibold ${
                 company.changeRate >= 0 ? "text-red-500" : "text-blue-500"
@@ -60,20 +60,20 @@ export function CompanyCard({ company, investedAmount, evaluatedAmount, canInves
         <CompanyChart data={company.history} color={company.color} />
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <div className="rounded-button bg-slate-50 px-3 py-2">
+      <div className="mt-4 grid grid-cols-3 gap-2 min-w-0">
+        <div className="min-w-0 rounded-button bg-slate-50 px-3 py-2">
           <span className="text-xs font-medium text-slate-500">수익금</span>
-          <p className={`mt-1 text-sm font-bold ${isProfitPositive ? "text-red-500" : "text-blue-500"}`}>
+          <p className={`money-text money-text-mini mt-1 font-bold ${isProfitPositive ? "text-red-500" : "text-blue-500"}`}>
             {formatSignedWon(profitAmount)}
           </p>
         </div>
-        <div className="rounded-button bg-slate-50 px-3 py-2">
+        <div className="min-w-0 rounded-button bg-slate-50 px-3 py-2">
           <span className="text-xs font-medium text-slate-500">총 투자</span>
-          <p className="mt-1 text-sm font-bold text-slate-950">
+          <p className="money-text money-text-mini mt-1 font-bold text-slate-950">
             {formatWon(company.totalInvestment)}
           </p>
         </div>
-        <div className="rounded-button bg-slate-50 px-3 py-2">
+        <div className="min-w-0 rounded-button bg-slate-50 px-3 py-2">
           <span className="text-xs font-medium text-slate-500">투자</span>
           <p className={`mt-1 text-sm font-bold ${canInvest ? "text-slate-950" : "text-slate-400"}`}>
             {canInvest ? "가능" : "마감"}

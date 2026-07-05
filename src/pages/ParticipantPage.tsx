@@ -512,12 +512,12 @@ function PersonalProfitFlow({
           <p className="text-xs font-bold text-slate-400">내 기록</p>
           <h2 className="mt-1 text-lg font-bold text-slate-950">내 수익 흐름</h2>
         </div>
-        <span className={"rounded-full px-3 py-1 text-xs font-bold " + (netProfit >= 0 ? "bg-red-50 text-red-500" : "bg-blue-50 text-blue-500") }>
+        <span className={"money-text max-w-[44%] rounded-full px-3 py-1 text-right text-xs font-bold " + (netProfit >= 0 ? "bg-red-50 text-red-500" : "bg-blue-50 text-blue-500") }>
           {formatSignedWon(netProfit)}
         </span>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="mt-4 grid grid-cols-3 gap-2 min-w-0">
         <Info label="누적 수익" value={formatWon(totalGain)} valueClassName="text-red-500" />
         <Info label="누적 손해" value={formatWon(totalLoss)} valueClassName="text-blue-500" />
         <Info label="회수 금액" value={formatWon(totalWithdrawn)} />
@@ -594,7 +594,7 @@ function PersonalProfitFlow({
                   <p className="truncate font-bold text-slate-950">{formatLogAction(log)} · {log.companyName}</p>
                   <p className="text-xs font-semibold text-slate-400">{log.year}년차 · {formatFeedTime(log.createdAt)}</p>
                 </div>
-                <span className="shrink-0 font-bold text-slate-950">{formatWon(log.amount)}</span>
+                <span className="money-text money-text-card max-w-[42%] shrink-0 text-right font-bold text-slate-950">{formatWon(log.amount)}</span>
               </div>
             ))
           )}
@@ -639,7 +639,7 @@ function LogHistorySheet({ logs, onClose }: { logs: TransactionLog[]; onClose: (
                   <p className="truncate font-bold text-slate-950">{formatLogAction(log)} · {log.companyName}</p>
                   <p className="text-xs font-semibold text-slate-400">{log.year}년차 · {formatFeedTime(log.createdAt)}</p>
                 </div>
-                <span className="shrink-0 font-bold text-slate-950">{formatWon(log.amount)}</span>
+                <span className="money-text money-text-card max-w-[42%] shrink-0 text-right font-bold text-slate-950">{formatWon(log.amount)}</span>
               </div>
             ))
           )}
@@ -665,9 +665,9 @@ function formatLogAction(log: TransactionLog) {
 
 function Info({ label, value, valueClassName = "" }: { label: string; value: string; valueClassName?: string }) {
   return (
-    <div className="rounded-button bg-slate-50 px-3 py-2">
+    <div className="min-w-0 rounded-button bg-slate-50 px-3 py-2">
       <p className="text-xs text-slate-500">{label}</p>
-      <p className={`mt-1 font-bold ${valueClassName}`}>{value}</p>
+      <p className={`money-text money-text-card mt-1 font-bold ${valueClassName}`}>{value}</p>
     </div>
   );
 }

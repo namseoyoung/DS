@@ -67,25 +67,25 @@ export function HeaderStats({
               {connected ? "LIVE" : "연결 중"}
             </span>
           </div>
-          <strong className="mt-1 block text-3xl font-bold tracking-normal">
+          <strong className="money-text money-text-hero mt-1 block font-bold tracking-normal">
             {formatWon(totalAsset)}
           </strong>
 
-          <div className="mt-5 grid grid-cols-3 gap-3">
-            <div>
+          <div className="mt-5 grid grid-cols-3 gap-3 min-w-0">
+            <div className="min-w-0">
               <p className="text-xs text-slate-400">현금</p>
-              <p className="mt-1 text-sm font-semibold">{formatWon(cash)}</p>
+              <p className="money-text money-text-mini mt-1 font-semibold">{formatWon(cash)}</p>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs text-slate-400">수익금</p>
-              <p className={`mt-1 text-sm font-semibold ${isProfitPositive ? "text-red-400" : "text-blue-400"}`}>
+              <p className={`money-text money-text-mini mt-1 font-semibold ${isProfitPositive ? "text-red-400" : "text-blue-400"}`}>
                 {formatSignedWon(profitAmount)}
               </p>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs text-slate-400">수익률</p>
               <p
-                className={`mt-1 flex items-center gap-1 text-sm font-semibold ${
+                className={`money-text money-text-mini mt-1 flex items-center gap-1 font-semibold ${
                   isPositive ? "text-red-400" : "text-blue-400"
                 }`}
               >

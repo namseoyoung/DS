@@ -67,3 +67,24 @@ input {
     background-position: 0 50%;
   }
 }
+
+.money-text {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.money-text-hero {
+  font-size: clamp(2rem, 9.5vw, 3rem);
+}
+
+.money-text-card {
+  font-size: clamp(0.78rem, 3.2vw, 0.95rem);
+}
+
+.money-text-mini {
+  font-size: clamp(0.7rem, 2.9vw, 0.875rem);
+}
