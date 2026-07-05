@@ -291,6 +291,38 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
           </div>
         </section>
 
+        <div className="grid gap-5 lg:grid-cols-2">
+          <section className="rounded-card bg-white p-6 shadow-soft">
+            <h2 className="flex items-center gap-2 font-bold"><Newspaper size={18} />뉴스 발송</h2>
+            <input value={newsTitle} onChange={(event) => setNewsTitle(event.target.value)} className="mt-4 h-[52px] w-full rounded-button border border-slate-200 px-4" placeholder="뉴스 제목" />
+            <textarea value={newsContent} onChange={(event) => setNewsContent(event.target.value)} className="mt-3 min-h-28 w-full rounded-button border border-slate-200 p-4" placeholder="뉴스 내용" />
+            <button
+              onClick={() => run(() => api.publishNews(admin.id, newsTitle, newsContent))}
+              className="mt-3 h-[52px] w-full rounded-button bg-blue-600 font-bold text-white"
+            >
+              뉴스 발송
+            </button>
+          </section>
+
+          <section className="rounded-card bg-white p-6 shadow-soft">
+            <h2 className="flex items-center gap-2 font-bold"><Bell size={18} />공지 발송</h2>
+            <textarea value={announcement} onChange={(event) => setAnnouncement(event.target.value)} className="mt-4 min-h-28 w-full rounded-button border border-slate-200 p-4" placeholder="공지 내용" />
+            <div className="mt-3 flex flex-wrap gap-2">
+              {quickAnnouncements.map((item) => (
+                <button key={item} onClick={() => setAnnouncement(item)} className="rounded-button border border-slate-200 px-3 py-2 text-sm font-bold">
+                  {item}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => run(() => api.publishAnnouncement(admin.id, announcement))}
+              className="mt-3 h-[52px] w-full rounded-button bg-blue-600 font-bold text-white"
+            >
+              공지 발송
+            </button>
+          </section>
+        </div>
+
         <div className="grid gap-5 xl:grid-cols-[1.4fr_0.8fr]">
           <section className="rounded-card bg-white p-6 shadow-soft">
             <h2 className="font-bold">회원 관리</h2>
@@ -452,38 +484,6 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
               ))}
               {state.logs.length === 0 ? <p className="text-sm text-slate-500">아직 거래 로그가 없습니다.</p> : null}
             </div>
-          </section>
-        </div>
-
-        <div className="grid gap-5 lg:grid-cols-2">
-          <section className="rounded-card bg-white p-6 shadow-soft">
-            <h2 className="flex items-center gap-2 font-bold"><Newspaper size={18} />뉴스 발송</h2>
-            <input value={newsTitle} onChange={(event) => setNewsTitle(event.target.value)} className="mt-4 h-[52px] w-full rounded-button border border-slate-200 px-4" placeholder="뉴스 제목" />
-            <textarea value={newsContent} onChange={(event) => setNewsContent(event.target.value)} className="mt-3 min-h-28 w-full rounded-button border border-slate-200 p-4" placeholder="뉴스 내용" />
-            <button
-              onClick={() => run(() => api.publishNews(admin.id, newsTitle, newsContent))}
-              className="mt-3 h-[52px] w-full rounded-button bg-blue-600 font-bold text-white"
-            >
-              뉴스 발송
-            </button>
-          </section>
-
-          <section className="rounded-card bg-white p-6 shadow-soft">
-            <h2 className="flex items-center gap-2 font-bold"><Bell size={18} />공지 발송</h2>
-            <textarea value={announcement} onChange={(event) => setAnnouncement(event.target.value)} className="mt-4 min-h-28 w-full rounded-button border border-slate-200 p-4" placeholder="공지 내용" />
-            <div className="mt-3 flex flex-wrap gap-2">
-              {quickAnnouncements.map((item) => (
-                <button key={item} onClick={() => setAnnouncement(item)} className="rounded-button border border-slate-200 px-3 py-2 text-sm font-bold">
-                  {item}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => run(() => api.publishAnnouncement(admin.id, announcement))}
-              className="mt-3 h-[52px] w-full rounded-button bg-blue-600 font-bold text-white"
-            >
-              공지 발송
-            </button>
           </section>
         </div>
       </section>
