@@ -160,7 +160,7 @@ on conflict (id) do update set
 insert into public.companies (id, name, initial_capital, current_value, previous_value, color, logo_url, tagline)
 values
   ('sanghyun', '상현회사', 5000, 5000, 5000, '#e11d48', '/company-profiles/sanghyun.png', '빠른 실행력으로 시장을 선점하는 성장형 기업'),
-  ('seoyoung', '서영회사', 5000, 5000, 5000, '#2563eb', '/company-profiles/seoyoung.png', '안정적인 재무와 균형 잡힌 사업 포트폴리오'),
+  ('seoyoung', '서영회사', 5000, 5000, 5000, '#2563eb', '/company-profiles/seoyoung-v2.png', '안정적인 재무와 균형 잡힌 사업 포트폴리오'),
   ('ain', '아인회사', 5000, 5000, 5000, '#16a34a', '/company-profiles/ain.png', '기술과 브랜드 신뢰를 함께 키우는 혁신 기업'),
   ('donghyun', '동현회사', 5000, 5000, 5000, '#f97316', '/company-profiles/donghyun.png', '공격적인 투자로 판을 흔드는 도전형 기업'),
   ('yeil', '예일회사', 4500, 4500, 4500, '#7c3aed', '/company-profiles/yeil.png', '작지만 민첩하게 기회를 포착하는 실속형 기업')
