@@ -240,11 +240,11 @@ values
   ('default', '과장', 1000),
   ('default', '차장', 1050),
   ('default', '부장', 1100),
-  ('yeil', '사원', 800),
-  ('yeil', '대리', 850),
-  ('yeil', '과장', 900),
-  ('yeil', '차장', 950),
-  ('yeil', '부장', 1000)
+  ('yeil', '사원', 900),
+  ('yeil', '대리', 950),
+  ('yeil', '과장', 1000),
+  ('yeil', '차장', 1050),
+  ('yeil', '부장', 1100)
 on conflict (company_type, rank) do update set salary = excluded.salary;
 
 alter table public.game_status enable row level security;

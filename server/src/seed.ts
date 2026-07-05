@@ -32,13 +32,7 @@ export const salaryTable: Record<CompanyId, Record<JobRank, number>> = {
   seoyoung: defaultSalary,
   ain: defaultSalary,
   donghyun: defaultSalary,
-  yeil: {
-    사원: 800,
-    대리: 850,
-    과장: 900,
-    차장: 950,
-    부장: 1000,
-  },
+  yeil: defaultSalary,
 };
 
 const companyCycle: CompanyId[] = ["sanghyun", "seoyoung", "ain", "donghyun", "yeil"];
