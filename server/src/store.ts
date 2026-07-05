@@ -278,10 +278,11 @@ const calculateState = (
     const currentYearInvestment = investments
       .filter((investment) => investment.company_id === company.id && investment.year === session.year)
       .reduce((sum, investment) => sum + getInvestmentAmount(investment), 0);
-    const changeRate =
+    const calculatedChangeRate =
       company.previous_value === 0
         ? 0
         : ((company.current_value - company.previous_value) / company.previous_value) * 100;
+    const changeRate = Number(company.change_rate ?? calculatedChangeRate);
 
     return {
       id: company.id,
@@ -782,6 +783,11 @@ class MemoryStore implements Store {
   }
 
   async advanceYear() {
+    for (const company of this.companies) {
+      company.previous_value = company.current_value;
+      company.change_rate = 0;
+      company.updated_at = now();
+    }
     this.session.year = Math.min(4, this.session.year + 1);
     await this.setStatus(this.session.year === 4 ? "ROUND_INVESTING" : "YEAR_ENDED");
     if (this.session.year === 4) {
@@ -1567,6 +1573,16 @@ class SupabaseStore extends MemoryStore {
   async advanceYear() {
     const state = await this.getState();
     const nextYear = Math.min(4, state.year + 1);
+    for (const company of state.companies) {
+      await this.supabase
+        .from("companies")
+        .update({
+          previous_value: company.currentValue,
+          change_rate: 0,
+          updated_at: now(),
+        })
+        .eq("id", company.id);
+    }
     await this.supabase
       .from("game_status")
       .update({
