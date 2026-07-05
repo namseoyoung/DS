@@ -1048,8 +1048,8 @@ class SupabaseStore extends MemoryStore {
     super();
   }
 
-  async initialize() {
-    await this.supabase.from("game_status").upsert({
+  private async ensureSession() {
+    const fullSession = {
       id: DEFAULT_SESSION_ID,
       year: 1,
       status: initialStatus,
@@ -1060,7 +1060,23 @@ class SupabaseStore extends MemoryStore {
       max_rounds: MAX_ROUNDS,
       capacity: CAPACITY,
       personal_ranking_revealed: false,
+    };
+    const { error } = await this.supabase.from("game_status").upsert(fullSession);
+    if (!error) return;
+
+    const { error: fallbackError } = await this.supabase.from("game_status").upsert({
+      id: DEFAULT_SESSION_ID,
+      year: 1,
+      status: initialStatus,
+      capacity: CAPACITY,
     });
+    if (fallbackError) {
+      throw new Error(`Supabase 기본 세션을 만들 수 없습니다: ${fallbackError.message}`);
+    }
+  }
+
+  async initialize() {
+    await this.ensureSession();
 
     const { data: companies } = await this.supabase.from("companies").select("id");
     if (!companies || companies.length === 0) {
@@ -1116,7 +1132,7 @@ class SupabaseStore extends MemoryStore {
       newsResult,
       announcementsResult,
     ] = await Promise.all([
-      this.supabase.from("game_status").select("*").eq("id", DEFAULT_SESSION_ID).single(),
+      this.supabase.from("game_status").select("*").eq("id", DEFAULT_SESSION_ID).maybeSingle(),
       this.supabase.from("companies").select("*").order("id"),
       this.supabase.from("users").select("*").order("id"),
       this.supabase.from("investments").select("*").order("created_at", { ascending: false }),
@@ -1131,8 +1147,18 @@ class SupabaseStore extends MemoryStore {
         .limit(20),
     ]);
 
+    let finalSessionResult = sessionResult;
+    if (!sessionResult.data && !sessionResult.error) {
+      await this.ensureSession();
+      finalSessionResult = await this.supabase
+        .from("game_status")
+        .select("*")
+        .eq("id", DEFAULT_SESSION_ID)
+        .maybeSingle();
+    }
+
     const requiredResults = [
-      ["game_status", sessionResult],
+      ["game_status", finalSessionResult],
       ["companies", companiesResult],
       ["users", usersResult],
       ["investments", investmentsResult],
@@ -1145,7 +1171,7 @@ class SupabaseStore extends MemoryStore {
       throw new Error(`Supabase 상태를 불러오지 못했습니다: ${name} ${result.error?.message ?? "데이터 없음"}`);
     }
 
-    const session = sessionResult.data;
+    const session = finalSessionResult.data;
     const companies = companiesResult.data;
     const users = usersResult.data;
     const investments = investmentsResult.data;
