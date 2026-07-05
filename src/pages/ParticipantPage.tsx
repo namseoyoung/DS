@@ -230,7 +230,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   const isLastTenSeconds = showCountdown && state.remainingSeconds <= 10;
   const activeHoldings = user.holdings.filter((holding) => holding.investedAmount > 0);
   const myYearlyResults = state.yearlyResults.filter((result) => result.userId === user.id);
-  const myLogs = state.logs.filter((log) => log.userId === user.id).slice(0, 5);
+  const myLogs = state.logs.filter((log) => log.userId === user.id);
   const message = statusMessage[state.status];
   const latestNews = state.news[0];
   const latestAnnouncement = state.announcements[0];
@@ -486,6 +486,8 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
 }
 
 function PersonalProfitFlow({ results, logs }: { results: UserYearlyResult[]; logs: TransactionLog[] }) {
+  const [isLogSheetOpen, setIsLogSheetOpen] = useState(false);
+  const previewLogs = logs.slice(0, 3);
   const sortedResults = results.slice().sort((a, b) => a.year - b.year);
   const totalProfit = sortedResults.reduce((sum, result) => sum + result.profitAmount, 0);
   const totalWithdrawn = sortedResults.reduce((sum, result) => sum + result.withdrawnAmount, 0);
@@ -564,8 +566,64 @@ function PersonalProfitFlow({ results, logs }: { results: UserYearlyResult[]; lo
       )}
 
       <div className="mt-5">
-        <h3 className="text-sm font-bold text-slate-950">최근 내 기록</h3>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-bold text-slate-950">최근 내 기록</h3>
+          {logs.length > 3 ? (
+            <button
+              type="button"
+              onClick={() => setIsLogSheetOpen(true)}
+              className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600"
+            >
+              자세히 보기
+            </button>
+          ) : null}
+        </div>
         <div className="mt-2 space-y-2">
+          {previewLogs.length === 0 ? (
+            <p className="rounded-button bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
+              아직 내 거래 기록이 없습니다.
+            </p>
+          ) : (
+            previewLogs.map((log) => (
+              <div key={log.logId} className="flex items-center justify-between gap-3 rounded-button bg-slate-50 px-4 py-3 text-sm">
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-slate-950">{formatLogAction(log)} · {log.companyName}</p>
+                  <p className="text-xs font-semibold text-slate-400">{log.year}년차 · {formatFeedTime(log.createdAt)}</p>
+                </div>
+                <span className="shrink-0 font-bold text-slate-950">{formatWon(log.amount)}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {isLogSheetOpen ? <LogHistorySheet logs={logs} onClose={() => setIsLogSheetOpen(false)} /> : null}
+    </section>
+  );
+}
+
+function LogHistorySheet({ logs, onClose }: { logs: TransactionLog[]; onClose: () => void }) {
+  return (
+    <section className="fixed inset-0 z-50 flex items-end bg-slate-950/40 px-3 pb-3" onClick={onClose}>
+      <div
+        className="mx-auto max-h-[72vh] w-full max-w-md overflow-hidden rounded-card bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <div>
+            <p className="text-xs font-bold text-slate-400">전체 기록</p>
+            <h2 className="text-lg font-bold text-slate-950">내 투자 기록</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-500"
+            aria-label="닫기"
+          >
+            <X size={18} />
+          </button>
+        </header>
+        <div className="max-h-[56vh] space-y-2 overflow-y-auto px-5 py-4">
           {logs.length === 0 ? (
             <p className="rounded-button bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
               아직 내 거래 기록이 없습니다.
@@ -586,7 +644,6 @@ function PersonalProfitFlow({ results, logs }: { results: UserYearlyResult[]; lo
     </section>
   );
 }
-
 function formatLogAction(log: TransactionLog) {
   switch (log.actionType) {
     case "INVEST":
@@ -816,3 +873,4 @@ function LoadingView({ label }: { label: string }) {
     </main>
   );
 }
+
