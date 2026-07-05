@@ -15,7 +15,7 @@ import { HeaderStats } from "../components/HeaderStats";
 import { InvestmentSheet } from "../components/InvestmentSheet";
 import { api, connectRealtime, disconnectRealtime } from "../lib/api";
 import type { Company, CompanyId, GameState, User } from "../types";
-import { formatPercent, formatValue, formatWon } from "../utils/format";
+import { formatPercent, formatSignedWon, formatValue, formatWon } from "../utils/format";
 
 type ParticipantPageProps = {
   state: GameState | null;
@@ -256,6 +256,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
         realName={user.realName}
         companyName={user.companyName}
         cash={user.cash}
+        investedAmount={user.investedAmount}
         evaluatedAmount={user.evaluatedAmount}
         totalAsset={user.totalAsset}
         returnRate={user.returnRate}
@@ -406,7 +407,13 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
                   </div>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
                     <Info label="투자금" value={formatWon(holding.investedAmount)} />
-                    <Info label="평가액" value={formatWon(holding.evaluatedAmount)} />
+                    <Info
+                      label="수익금"
+                      value={formatSignedWon(holding.evaluatedAmount - holding.investedAmount)}
+                      valueClassName={
+                        holding.evaluatedAmount - holding.investedAmount >= 0 ? "text-red-500" : "text-blue-500"
+                      }
+                    />
                     <Info label="기업가치" value={formatValue(holding.currentValue)} />
                   </div>
                   <button
@@ -471,11 +478,11 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({ label, value, valueClassName = "" }: { label: string; value: string; valueClassName?: string }) {
   return (
     <div className="rounded-button bg-slate-50 px-3 py-2">
       <p className="text-xs text-slate-500">{label}</p>
-      <p className="mt-1 font-bold">{value}</p>
+      <p className={`mt-1 font-bold ${valueClassName}`}>{value}</p>
     </div>
   );
 }

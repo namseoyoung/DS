@@ -15,7 +15,7 @@ import {
 import { FormEvent, ReactNode, useMemo, useState } from "react";
 import { api, connectRealtime, disconnectRealtime } from "../lib/api";
 import type { Company, CompanyId, GameState, GameStatus, JobRank, User } from "../types";
-import { formatPercent, formatValue, formatWon } from "../utils/format";
+import { formatPercent, formatSignedWon, formatValue, formatWon } from "../utils/format";
 
 type AdminPageProps = {
   state: GameState | null;
@@ -284,7 +284,7 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
                     <th>회사</th>
                     <th>직급</th>
                     <th>현금</th>
-                    <th>평가금</th>
+                    <th>수익금</th>
                     <th>총자산</th>
                     <th>수익률</th>
                     <th>접속</th>
@@ -326,7 +326,7 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
                         </select>
                       </td>
                       <td>{formatWon(user.cash)}</td>
-                      <td>{formatWon(user.evaluatedAmount)}</td>
+                      <td className={user.evaluatedAmount - user.investedAmount >= 0 ? "text-red-500" : "text-blue-500"}>{formatSignedWon(user.evaluatedAmount - user.investedAmount)}</td>
                       <td className="font-bold">{formatWon(user.totalAsset)}</td>
                       <td>{formatPercent(user.returnRate)}</td>
                       <td>{user.isOnline ? "온라인" : "오프라인"}</td>

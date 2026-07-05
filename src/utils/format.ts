@@ -9,5 +9,8 @@ export const formatWon = (amount: number) => `${formatNumber(amount)}원`;
 
 export const formatValue = (value: number) => `${formatNumber(value)}원`;
 
+export const formatSignedWon = (amount: number) =>
+  `${amount > 0 ? "+" : ""}${formatWon(amount)}`;
+
 export const formatPercent = (value: number) =>
   `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;

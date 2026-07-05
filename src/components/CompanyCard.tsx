@@ -1,6 +1,6 @@
 import { ChevronRight, Info } from "lucide-react";
 import type { Company } from "../types";
-import { formatPercent, formatValue, formatWon } from "../utils/format";
+import { formatPercent, formatSignedWon, formatValue, formatWon } from "../utils/format";
 import { CompanyChart } from "./CompanyChart";
 
 type CompanyCardProps = {
@@ -13,6 +13,9 @@ type CompanyCardProps = {
 };
 
 export function CompanyCard({ company, investedAmount, evaluatedAmount, canInvest, onSelect, onOpenProfile }: CompanyCardProps) {
+  const profitAmount = evaluatedAmount - investedAmount;
+  const isProfitPositive = profitAmount >= 0;
+
   return (
     <article className="w-full rounded-card border border-slate-200 bg-white p-6 text-left shadow-soft transition duration-300">
       <div className="flex items-start justify-between gap-4">
@@ -59,8 +62,10 @@ export function CompanyCard({ company, investedAmount, evaluatedAmount, canInves
 
       <div className="mt-4 grid grid-cols-3 gap-2">
         <div className="rounded-button bg-slate-50 px-3 py-2">
-          <span className="text-xs font-medium text-slate-500">평가액</span>
-          <p className="mt-1 text-sm font-bold text-slate-950">{formatWon(evaluatedAmount)}</p>
+          <span className="text-xs font-medium text-slate-500">수익금</span>
+          <p className={`mt-1 text-sm font-bold ${isProfitPositive ? "text-red-500" : "text-blue-500"}`}>
+            {formatSignedWon(profitAmount)}
+          </p>
         </div>
         <div className="rounded-button bg-slate-50 px-3 py-2">
           <span className="text-xs font-medium text-slate-500">총 투자</span>

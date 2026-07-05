@@ -1,10 +1,11 @@
 import { Activity, Building2, LogOut, TrendingDown, TrendingUp, Wallet } from "lucide-react";
-import { formatPercent, formatWon } from "../utils/format";
+import { formatPercent, formatSignedWon, formatWon } from "../utils/format";
 
 type HeaderStatsProps = {
   realName: string;
   companyName: string;
   cash: number;
+  investedAmount: number;
   evaluatedAmount: number;
   totalAsset: number;
   returnRate: number;
@@ -17,6 +18,7 @@ export function HeaderStats({
   realName,
   companyName,
   cash,
+  investedAmount,
   evaluatedAmount,
   totalAsset,
   returnRate,
@@ -26,6 +28,8 @@ export function HeaderStats({
 }: HeaderStatsProps) {
   const isPositive = returnRate >= 0;
   const TrendIcon = isPositive ? TrendingUp : TrendingDown;
+  const profitAmount = evaluatedAmount - investedAmount;
+  const isProfitPositive = profitAmount >= 0;
 
   return (
     <section className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-5 pb-4 pt-4 backdrop-blur">
@@ -73,8 +77,10 @@ export function HeaderStats({
               <p className="mt-1 text-sm font-semibold">{formatWon(cash)}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400">평가액</p>
-              <p className="mt-1 text-sm font-semibold">{formatWon(evaluatedAmount)}</p>
+              <p className="text-xs text-slate-400">수익금</p>
+              <p className={`mt-1 text-sm font-semibold ${isProfitPositive ? "text-red-400" : "text-blue-400"}`}>
+                {formatSignedWon(profitAmount)}
+              </p>
             </div>
             <div>
               <p className="text-xs text-slate-400">수익률</p>
