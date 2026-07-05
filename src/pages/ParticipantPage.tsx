@@ -2,7 +2,10 @@ import { Bell, LogIn, Newspaper, X } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -16,7 +19,7 @@ import { HeaderStats } from "../components/HeaderStats";
 import { InvestmentSheet } from "../components/InvestmentSheet";
 import { api, connectRealtime, disconnectRealtime } from "../lib/api";
 import { authStorage } from "../lib/authStorage";
-import type { Company, CompanyId, GameState, User } from "../types";
+import type { Company, CompanyId, GameState, TransactionLog, User, UserYearlyResult } from "../types";
 import { formatPercent, formatSignedWon, formatValue, formatWon } from "../utils/format";
 
 type ParticipantPageProps = {
@@ -226,6 +229,8 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   const showCountdown = (canInvest || isRoundResult) && state.remainingSeconds > 0;
   const isLastTenSeconds = showCountdown && state.remainingSeconds <= 10;
   const activeHoldings = user.holdings.filter((holding) => holding.investedAmount > 0);
+  const myYearlyResults = state.yearlyResults.filter((result) => result.userId === user.id);
+  const myLogs = state.logs.filter((log) => log.userId === user.id).slice(0, 5);
   const message = statusMessage[state.status];
   const latestNews = state.news[0];
   const latestAnnouncement = state.announcements[0];
@@ -299,6 +304,8 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
             onClick={() => setFeedSheet("news")}
           />
         </section>
+
+        <PersonalProfitFlow results={myYearlyResults} logs={myLogs} />
 
         {showCountdown ? (
           <section
@@ -476,6 +483,123 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
       />
     </main>
   );
+}
+
+function PersonalProfitFlow({ results, logs }: { results: UserYearlyResult[]; logs: TransactionLog[] }) {
+  const sortedResults = results.slice().sort((a, b) => a.year - b.year);
+  const totalProfit = sortedResults.reduce((sum, result) => sum + result.profitAmount, 0);
+  const totalWithdrawn = sortedResults.reduce((sum, result) => sum + result.withdrawnAmount, 0);
+  const bestResult = sortedResults.reduce<UserYearlyResult | null>(
+    (best, result) => (!best || result.profitAmount > best.profitAmount ? result : best),
+    null,
+  );
+  const chartData = sortedResults.map((result) => ({
+    label: String(result.year) + "년차",
+    profitAmount: result.profitAmount,
+    totalAsset: result.totalAsset,
+  }));
+
+  return (
+    <section className="rounded-card border border-slate-200 bg-white p-6 shadow-soft">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold text-slate-400">내 기록</p>
+          <h2 className="mt-1 text-lg font-bold text-slate-950">내 수익 흐름</h2>
+        </div>
+        <span className={"rounded-full px-3 py-1 text-xs font-bold " + (totalProfit >= 0 ? "bg-red-50 text-red-500" : "bg-blue-50 text-blue-500") }>
+          {formatSignedWon(totalProfit)}
+        </span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <Info label="누적 수익" value={formatSignedWon(totalProfit)} valueClassName={totalProfit >= 0 ? "text-red-500" : "text-blue-500"} />
+        <Info label="회수 금액" value={formatWon(totalWithdrawn)} />
+        <Info label="최고 연차" value={bestResult ? String(bestResult.year) + "년차" : "-"} />
+      </div>
+
+      {chartData.length > 0 ? (
+        <div className="mt-5 grid gap-4">
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-950">연차별 수익금</h3>
+              <span className="text-xs font-semibold text-slate-400">수익/손실</span>
+            </div>
+            <div className="h-36">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis hide />
+                  <Tooltip formatter={(value) => formatSignedWon(Number(value))} />
+                  <Bar dataKey="profitAmount" radius={[10, 10, 10, 10]}>
+                    {chartData.map((item) => (
+                      <Cell key={item.label} fill={item.profitAmount >= 0 ? "#ef4444" : "#3b82f6"} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-950">총자산 변화</h3>
+              <span className="text-xs font-semibold text-slate-400">정산 기준</span>
+            </div>
+            <div className="h-32">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <XAxis dataKey="label" hide />
+                  <YAxis hide domain={["dataMin - 100", "dataMax + 100"]} />
+                  <Tooltip formatter={(value) => formatWon(Number(value))} />
+                  <Line type="monotone" dataKey="totalAsset" stroke="#0f172a" strokeWidth={3} dot={{ r: 3 }} isAnimationActive />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-4 rounded-button bg-slate-50 px-4 py-4 text-sm font-semibold text-slate-500">
+          아직 정산된 수익 기록이 없습니다.
+        </p>
+      )}
+
+      <div className="mt-5">
+        <h3 className="text-sm font-bold text-slate-950">최근 내 기록</h3>
+        <div className="mt-2 space-y-2">
+          {logs.length === 0 ? (
+            <p className="rounded-button bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
+              아직 내 거래 기록이 없습니다.
+            </p>
+          ) : (
+            logs.map((log) => (
+              <div key={log.logId} className="flex items-center justify-between gap-3 rounded-button bg-slate-50 px-4 py-3 text-sm">
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-slate-950">{formatLogAction(log)} · {log.companyName}</p>
+                  <p className="text-xs font-semibold text-slate-400">{log.year}년차 · {formatFeedTime(log.createdAt)}</p>
+                </div>
+                <span className="shrink-0 font-bold text-slate-950">{formatWon(log.amount)}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function formatLogAction(log: TransactionLog) {
+  switch (log.actionType) {
+    case "INVEST":
+      return "투자";
+    case "WITHDRAW":
+      return "회수";
+    case "SALARY":
+      return "연봉";
+    case "SETTLEMENT":
+      return "정산";
+    default:
+      return log.actionType;
+  }
 }
 
 function Info({ label, value, valueClassName = "" }: { label: string; value: string; valueClassName?: string }) {

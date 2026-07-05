@@ -136,6 +136,23 @@ create table if not exists public.final_results (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.user_yearly_results (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null references public.users(id) on delete cascade,
+  year integer not null check (year between 1 and 4),
+  starting_cash numeric not null default 0,
+  invested_amount numeric not null default 0,
+  evaluated_amount numeric not null default 0,
+  profit_amount numeric not null default 0,
+  withdrawn_amount numeric not null default 0,
+  ending_cash numeric not null default 0,
+  total_asset numeric not null default 0,
+  return_rate numeric not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, year)
+);
+
 create index if not exists idx_users_company on public.users(company_id);
 create index if not exists idx_users_role on public.users(role);
 create index if not exists idx_investments_user_year on public.investments(user_id, year);
@@ -144,6 +161,7 @@ create index if not exists idx_transactions_created on public.transactions(creat
 create index if not exists idx_company_history_company_tick on public.company_value_history(company_id, tick);
 create index if not exists idx_news_created on public.news(created_at desc);
 create index if not exists idx_announcements_created on public.announcements(created_at desc);
+create index if not exists idx_user_yearly_results_user_year on public.user_yearly_results(user_id, year);
 
 insert into public.game_status (id, year, status, capacity, current_round, max_rounds)
 values ('main-event', 1, 'BEFORE_START', 40, 1, 10)
@@ -258,6 +276,7 @@ alter table public.announcements enable row level security;
 alter table public.connection_status enable row level security;
 alter table public.salary_rules enable row level security;
 alter table public.final_results enable row level security;
+alter table public.user_yearly_results enable row level security;
 
 drop policy if exists "read game status" on public.game_status;
 drop policy if exists "read companies" on public.companies;
@@ -270,6 +289,7 @@ drop policy if exists "read announcements" on public.announcements;
 drop policy if exists "read connection status" on public.connection_status;
 drop policy if exists "read salary rules" on public.salary_rules;
 drop policy if exists "read final results" on public.final_results;
+drop policy if exists "read user yearly results" on public.user_yearly_results;
 
 create policy "read game status" on public.game_status for select using (true);
 create policy "read companies" on public.companies for select using (true);
@@ -282,3 +302,4 @@ create policy "read announcements" on public.announcements for select using (tru
 create policy "read connection status" on public.connection_status for select using (true);
 create policy "read salary rules" on public.salary_rules for select using (true);
 create policy "read final results" on public.final_results for select using (true);
+create policy "read user yearly results" on public.user_yearly_results for select using (true);

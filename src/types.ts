@@ -71,6 +71,22 @@ export type User = {
   holdings: Holding[];
 };
 
+export type UserYearlyResult = {
+  id: string;
+  userId: string;
+  year: number;
+  startingCash: number;
+  investedAmount: number;
+  evaluatedAmount: number;
+  profitAmount: number;
+  withdrawnAmount: number;
+  endingCash: number;
+  totalAsset: number;
+  returnRate: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type TransactionLog = {
   logId: string;
   userId: string;
@@ -111,6 +127,7 @@ export type GameState = {
   companies: Company[];
   users: User[];
   participants: User[];
+  yearlyResults: UserYearlyResult[];
   logs: TransactionLog[];
   news: NewsItem[];
   announcements: Announcement[];

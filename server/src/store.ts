@@ -9,6 +9,7 @@ import type {
   NewsItem,
   TransactionLog,
   User,
+  UserYearlyResult,
 } from "../../src/types";
 import {
   calculateRealtimeValue,
@@ -102,6 +103,22 @@ type DbLog = {
   action_type: TransactionLog["actionType"];
   year: number;
   created_at: string;
+};
+
+type DbYearlyResult = {
+  id: string;
+  user_id: string;
+  year: number;
+  starting_cash: number;
+  invested_amount: number;
+  evaluated_amount: number;
+  profit_amount: number;
+  withdrawn_amount: number;
+  ending_cash: number;
+  total_asset: number;
+  return_rate: number;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Store = {
@@ -229,10 +246,30 @@ const calculateState = (
   investments: DbInvestment[],
   history: DbHistory[],
   logs: DbLog[],
+  yearlyResultsRaw: DbYearlyResult[],
   news: NewsItem[],
   announcements: Announcement[],
 ): GameState => {
   const useRealtimeValuation = session.year === 4;
+  const yearlyResults: UserYearlyResult[] = yearlyResultsRaw
+    .slice()
+    .sort((a, b) => a.year - b.year || Date.parse(a.created_at) - Date.parse(b.created_at))
+    .map((item) => ({
+      id: item.id,
+      userId: item.user_id,
+      year: item.year,
+      startingCash: Number(item.starting_cash ?? 0),
+      investedAmount: Number(item.invested_amount ?? 0),
+      evaluatedAmount: Number(item.evaluated_amount ?? 0),
+      profitAmount: Number(item.profit_amount ?? 0),
+      withdrawnAmount: Number(item.withdrawn_amount ?? 0),
+      endingCash: Number(item.ending_cash ?? 0),
+      totalAsset: Number(item.total_asset ?? 0),
+      returnRate: Number(item.return_rate ?? 0),
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    }));
+
   const companiesWithoutRank = companiesRaw.map<Company>((company) => {
     const totalInvestment = investments
       .filter((investment) => investment.company_id === company.id)
@@ -369,6 +406,7 @@ const calculateState = (
     companies,
     users,
     participants,
+    yearlyResults,
     logs: logs
       .slice()
       .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
@@ -411,6 +449,7 @@ class MemoryStore implements Store {
   private investments: DbInvestment[] = [];
   private history: DbHistory[] = [];
   private logs: DbLog[] = [];
+  private yearlyResults: DbYearlyResult[] = [];
   private news: NewsItem[] = [];
   private announcements: Announcement[] = [];
 
@@ -460,6 +499,7 @@ class MemoryStore implements Store {
       this.investments,
       this.history,
       this.logs,
+      this.yearlyResults,
       this.news,
       this.announcements,
     );
@@ -577,6 +617,7 @@ class MemoryStore implements Store {
     const payout = Math.max(0, Math.floor(valuation.evaluatedAmount));
 
     user.cash += payout;
+    this.addMemoryWithdrawalResult(user.id, this.session.year, payout, user.cash);
     company.total_investment = Math.max(
       0,
       Number(company.total_investment ?? 0) - valuation.investedAmount,
@@ -659,6 +700,31 @@ class MemoryStore implements Store {
     await this.setStatus("SALARY_PAID");
   }
 
+  private upsertMemoryYearlyResult(result: Omit<DbYearlyResult, "id" | "created_at" | "updated_at">) {
+    const existing = this.yearlyResults.find(
+      (item) => item.user_id === result.user_id && item.year === result.year,
+    );
+    const timestamp = now();
+    if (existing) {
+      Object.assign(existing, result, { updated_at: timestamp });
+      return;
+    }
+    this.yearlyResults.push({
+      ...result,
+      id: crypto.randomUUID(),
+      created_at: timestamp,
+      updated_at: timestamp,
+    });
+  }
+
+  private addMemoryWithdrawalResult(userId: string, year: number, payout: number, endingCash: number) {
+    const existing = this.yearlyResults.find((item) => item.user_id === userId && item.year === year);
+    if (!existing) return;
+    existing.withdrawn_amount = Number(existing.withdrawn_amount ?? 0) + payout;
+    existing.ending_cash = endingCash;
+    existing.updated_at = now();
+  }
+
   async settleYear(changes: Partial<Record<CompanyId, number>>) {
     for (const company of this.companies) {
       const change = changes[company.id] ?? 0;
@@ -683,6 +749,26 @@ class MemoryStore implements Store {
       investment.evaluated_amount = evaluated.evaluatedAmount;
       investment.profit_rate = evaluated.profitRate;
       investment.updated_at = now();
+    }
+    for (const user of this.users.filter((item) => item.role === "participant")) {
+      const userInvestments = this.investments.filter(
+        (investment) => investment.user_id === user.id && investment.year === this.session.year,
+      );
+      const investedAmount = userInvestments.reduce((sum, item) => sum + getInvestmentAmount(item), 0);
+      const evaluatedAmount = userInvestments.reduce((sum, item) => sum + Number(item.evaluated_amount ?? 0), 0);
+      const profitAmount = evaluatedAmount - investedAmount;
+      this.upsertMemoryYearlyResult({
+        user_id: user.id,
+        year: this.session.year,
+        starting_cash: user.cash,
+        invested_amount: investedAmount,
+        evaluated_amount: evaluatedAmount,
+        profit_amount: profitAmount,
+        withdrawn_amount: 0,
+        ending_cash: user.cash,
+        total_asset: user.cash + evaluatedAmount,
+        return_rate: investedAmount === 0 ? 0 : (profitAmount / investedAmount) * 100,
+      });
     }
     this.addLog("admin", "운영자", "sanghyun", "정산", 0, "SETTLEMENT");
     await this.setStatus("SETTLED");
@@ -723,6 +809,7 @@ class MemoryStore implements Store {
       const valuation = calculateEvaluatedInvestment(investment, company);
       const payout = Math.max(0, Math.floor(valuation.evaluatedAmount));
       user.cash += payout;
+      this.addMemoryWithdrawalResult(user.id, this.session.year, payout, user.cash);
       company.total_investment = Math.max(
         0,
         Number(company.total_investment ?? 0) - valuation.investedAmount,
@@ -963,6 +1050,7 @@ class SupabaseStore extends MemoryStore {
       { data: investments },
       { data: history },
       { data: logs },
+      { data: yearlyResults },
       { data: news },
       { data: announcements },
     ] = await Promise.all([
@@ -972,6 +1060,7 @@ class SupabaseStore extends MemoryStore {
       this.supabase.from("investments").select("*").order("created_at", { ascending: false }),
       this.supabase.from("company_value_history").select("*").order("tick"),
       this.supabase.from("transactions").select("*").order("created_at", { ascending: false }),
+      this.supabase.from("user_yearly_results").select("*").order("year"),
       this.supabase.from("news").select("*").order("created_at", { ascending: false }).limit(20),
       this.supabase
         .from("announcements")
@@ -991,6 +1080,7 @@ class SupabaseStore extends MemoryStore {
       investments as DbInvestment[],
       history as DbHistory[],
       logs as DbLog[],
+      (yearlyResults ?? []) as DbYearlyResult[],
       ((news ?? []) as Array<{ id: string; title: string; content: string; created_at: string }>).map(
         (item) => ({ id: item.id, title: item.title, content: item.content, createdAt: item.created_at }),
       ),
@@ -1129,7 +1219,25 @@ class SupabaseStore extends MemoryStore {
     );
     const payout = Math.max(0, Math.floor(valuation.evaluatedAmount));
 
-    await this.supabase.from("users").update({ cash: user.cash + payout }).eq("id", userId);
+    const endingCash = user.cash + payout;
+    await this.supabase.from("users").update({ cash: endingCash }).eq("id", userId);
+    const { data: yearlyResult } = await this.supabase
+      .from("user_yearly_results")
+      .select("withdrawn_amount")
+      .eq("user_id", userId)
+      .eq("year", state.year)
+      .maybeSingle();
+    if (yearlyResult) {
+      await this.supabase
+        .from("user_yearly_results")
+        .update({
+          withdrawn_amount: Number(yearlyResult.withdrawn_amount ?? 0) + payout,
+          ending_cash: endingCash,
+          updated_at: now(),
+        })
+        .eq("user_id", userId)
+        .eq("year", state.year);
+    }
     await this.supabase
       .from("companies")
       .update({
@@ -1279,6 +1387,7 @@ class SupabaseStore extends MemoryStore {
       .from("investments")
       .select("*")
       .eq("year", state.year);
+    const settledInvestments: DbInvestment[] = [];
     for (const investment of (investments ?? []) as DbInvestment[]) {
       const company = nextCompanies.get(investment.company_id);
       if (!company) continue;
@@ -1287,6 +1396,12 @@ class SupabaseStore extends MemoryStore {
         initial_capital: company.initialCapital,
         current_value: company.currentValue,
       });
+      const settledInvestment = {
+        ...investment,
+        evaluated_amount: evaluated.evaluatedAmount,
+        profit_rate: evaluated.profitRate,
+      };
+      settledInvestments.push(settledInvestment);
       await this.supabase
         .from("investments")
         .update({
@@ -1296,6 +1411,32 @@ class SupabaseStore extends MemoryStore {
         })
         .eq("id", investment.id);
     }
+
+    const yearlyResults = state.participants.map((user) => {
+      const userInvestments = settledInvestments.filter((investment) => investment.user_id === user.id);
+      const investedAmount = userInvestments.reduce((sum, item) => sum + getInvestmentAmount(item), 0);
+      const evaluatedAmount = userInvestments.reduce((sum, item) => sum + Number(item.evaluated_amount ?? 0), 0);
+      const profitAmount = evaluatedAmount - investedAmount;
+      return {
+        user_id: user.id,
+        year: state.year,
+        starting_cash: user.cash,
+        invested_amount: investedAmount,
+        evaluated_amount: evaluatedAmount,
+        profit_amount: profitAmount,
+        withdrawn_amount: 0,
+        ending_cash: user.cash,
+        total_asset: user.cash + evaluatedAmount,
+        return_rate: investedAmount === 0 ? 0 : (profitAmount / investedAmount) * 100,
+        updated_at: now(),
+      };
+    });
+    if (yearlyResults.length > 0) {
+      await this.supabase
+        .from("user_yearly_results")
+        .upsert(yearlyResults, { onConflict: "user_id,year" });
+    }
+
     await this.supabase.from("transactions").insert({
       user_id: "admin",
       user_name: "운영자",
@@ -1413,7 +1554,25 @@ class SupabaseStore extends MemoryStore {
     for (const [userId, payout] of payoutsByUser.entries()) {
       const user = state.users.find((item) => item.id === userId);
       if (!user) continue;
-      await this.supabase.from("users").update({ cash: user.cash + payout }).eq("id", userId);
+      const endingCash = user.cash + payout;
+      await this.supabase.from("users").update({ cash: endingCash }).eq("id", userId);
+      const { data: yearlyResult } = await this.supabase
+        .from("user_yearly_results")
+        .select("withdrawn_amount")
+        .eq("user_id", userId)
+        .eq("year", state.year)
+        .maybeSingle();
+      if (yearlyResult) {
+        await this.supabase
+          .from("user_yearly_results")
+          .update({
+            withdrawn_amount: Number(yearlyResult.withdrawn_amount ?? 0) + payout,
+            ending_cash: endingCash,
+            updated_at: now(),
+          })
+          .eq("user_id", userId)
+          .eq("year", state.year);
+      }
     }
     for (const [companyId, investedAmount] of investedByCompany.entries()) {
       const company = state.companies.find((item) => item.id === companyId);
@@ -1532,10 +1691,12 @@ class SupabaseStore extends MemoryStore {
   async reset(scope = "all") {
     if (scope === "logs") {
       await this.supabase.from("transactions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await this.supabase.from("user_yearly_results").delete().neq("id", "00000000-0000-0000-0000-000000000000");
       return;
     }
     if (scope === "assets") {
       await this.supabase.from("investments").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await this.supabase.from("user_yearly_results").delete().neq("id", "00000000-0000-0000-0000-000000000000");
       for (const seed of userSeeds) {
         await this.supabase.from("users").update({ cash: seed.cash }).eq("id", seed.id);
       }
@@ -1543,6 +1704,7 @@ class SupabaseStore extends MemoryStore {
     }
     await Promise.all([
       this.supabase.from("transactions").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
+      this.supabase.from("user_yearly_results").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
       this.supabase.from("investments").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
       this.supabase.from("company_value_history").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
       this.supabase.from("news").delete().neq("id", "00000000-0000-0000-0000-000000000000"),
