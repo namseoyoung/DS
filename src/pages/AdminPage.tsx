@@ -309,53 +309,63 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
                     <th></th>
                   </tr>
                 </thead>
-                <tbody>
-                  {state.participants.map((user) => (
-                    <tr key={user.id} className="border-t border-slate-100">
-                      <td className="py-3 font-bold">{user.realName}</td>
-                      <td>
-                        <select
-                          value={user.companyId}
-                          onChange={(event) =>
-                            updateUserField(user, { companyId: event.target.value as CompanyId })
-                          }
-                          className="h-10 min-w-32 rounded-button border border-slate-200 bg-white px-3 font-semibold outline-none focus:border-blue-600"
-                        >
-                          {state.companies.map((company) => (
-                            <option key={company.id} value={company.id}>
-                              {company.name}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <select
-                          value={user.rank}
-                          onChange={(event) =>
-                            updateUserField(user, { rank: event.target.value as JobRank })
-                          }
-                          className="h-10 min-w-24 rounded-button border border-slate-200 bg-white px-3 font-semibold outline-none focus:border-blue-600"
-                        >
-                          {jobRanks.map((rank) => (
-                            <option key={rank} value={rank}>
-                              {rank}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>{formatWon(user.cash)}</td>
-                      <td className={user.evaluatedAmount - user.investedAmount >= 0 ? "text-red-500" : "text-blue-500"}>{formatSignedWon(user.evaluatedAmount - user.investedAmount)}</td>
-                      <td className="font-bold">{formatWon(user.totalAsset)}</td>
-                      <td>{formatPercent(user.returnRate)}</td>
-                      <td>{user.isOnline ? "온라인" : "오프라인"}</td>
-                      <td>
-                        <button onClick={() => editUser(user)} className="rounded-button border border-slate-200 px-3 py-2 font-bold">
-                          수정
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                {state.companies.map((company) => {
+                  const companyUsers = state.participants.filter((user) => user.companyId === company.id);
+                  return (
+                    <tbody key={company.id}>
+                      <tr className="bg-slate-50">
+                        <td colSpan={9} className="py-2 text-xs font-bold text-slate-500">
+                          {company.name} · {companyUsers.length}명
+                        </td>
+                      </tr>
+                      {companyUsers.map((user) => (
+                        <tr key={user.id} className="border-t border-slate-100">
+                          <td className="py-3 font-bold">{user.realName}</td>
+                          <td>
+                            <select
+                              value={user.companyId}
+                              onChange={(event) =>
+                                updateUserField(user, { companyId: event.target.value as CompanyId })
+                              }
+                              className="h-10 min-w-32 rounded-button border border-slate-200 bg-white px-3 font-semibold outline-none focus:border-blue-600"
+                            >
+                              {state.companies.map((option) => (
+                                <option key={option.id} value={option.id}>
+                                  {option.name}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <select
+                              value={user.rank}
+                              onChange={(event) =>
+                                updateUserField(user, { rank: event.target.value as JobRank })
+                              }
+                              className="h-10 min-w-24 rounded-button border border-slate-200 bg-white px-3 font-semibold outline-none focus:border-blue-600"
+                            >
+                              {jobRanks.map((rank) => (
+                                <option key={rank} value={rank}>
+                                  {rank}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>{formatWon(user.cash)}</td>
+                          <td className={user.evaluatedAmount - user.investedAmount >= 0 ? "text-red-500" : "text-blue-500"}>{formatSignedWon(user.evaluatedAmount - user.investedAmount)}</td>
+                          <td className="font-bold">{formatWon(user.totalAsset)}</td>
+                          <td>{formatPercent(user.returnRate)}</td>
+                          <td>{user.isOnline ? "온라인" : "오프라인"}</td>
+                          <td>
+                            <button onClick={() => editUser(user)} className="rounded-button border border-slate-200 px-3 py-2 font-bold">
+                              수정
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  );
+                })}
               </table>
             </div>
           </section>
