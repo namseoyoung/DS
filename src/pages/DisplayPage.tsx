@@ -119,7 +119,6 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                   rank={company.rank}
                   name={company.name}
                   main={formatValue(company.currentValue)}
-                  sub={`${formatPercent(company.changeRate)} · ${formatWon(company.totalInvestment)}`}
                   logoUrl={company.logoUrl}
                   avatarColor={company.color}
                 />
@@ -234,7 +233,7 @@ function RankLine({
   rank: number;
   name: string;
   main: string;
-  sub: string;
+  sub?: string;
   logoUrl?: string;
   avatarColor?: string;
 }) {
@@ -247,7 +246,7 @@ function RankLine({
         ) : null}
         <div className="min-w-0">
           <p className="truncate text-base font-bold sm:text-lg">{name}</p>
-          <p className="truncate text-xs text-slate-500 sm:text-sm">{sub}</p>
+          {sub ? <p className="truncate text-xs text-slate-500 sm:text-sm">{sub}</p> : null}
         </div>
       </div>
       <span className="col-span-2 text-right text-lg font-bold sm:col-span-1 sm:text-xl">{main}</span>
