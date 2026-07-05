@@ -53,6 +53,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ id, password }),
     }),
+  restoreSession: (userId: string, sessionToken: string) =>
+    request<LoginResponse>("/api/session/restore", {
+      method: "POST",
+      body: JSON.stringify({ userId, sessionToken }),
+    }),
   logout: (userId: string, sessionToken: string) =>
     request<GameState>("/api/logout", {
       method: "POST",

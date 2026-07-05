@@ -15,6 +15,7 @@ import { CompanyChart } from "../components/CompanyChart";
 import { HeaderStats } from "../components/HeaderStats";
 import { InvestmentSheet } from "../components/InvestmentSheet";
 import { api, connectRealtime, disconnectRealtime } from "../lib/api";
+import { authStorage } from "../lib/authStorage";
 import type { Company, CompanyId, GameState, User } from "../types";
 import { formatPercent, formatSignedWon, formatValue, formatWon } from "../utils/format";
 
@@ -81,7 +82,7 @@ const statusMessage: Record<GameState["status"], { title: string; body: string }
 };
 
 export function ParticipantPage({ state, setState, connected }: ParticipantPageProps) {
-  const [userId, setUserId] = useState(() => sessionStorage.getItem("userId"));
+  const [userId, setUserId] = useState(() => authStorage.get("userId"));
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -114,9 +115,9 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
     setError(null);
     try {
       const response = await api.login(id, password);
-      sessionStorage.setItem("userId", response.user.id);
-      sessionStorage.setItem("sessionUserId", response.user.id);
-      sessionStorage.setItem("sessionToken", response.sessionToken);
+      authStorage.set("userId", response.user.id);
+      authStorage.set("sessionUserId", response.user.id);
+      authStorage.set("sessionToken", response.sessionToken);
       connectRealtime(response.user.id, response.sessionToken);
       setUserId(response.user.id);
       setState(response.state);
@@ -132,7 +133,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   };
 
   const handleLogout = async () => {
-    const sessionToken = sessionStorage.getItem("sessionToken") ?? "";
+    const sessionToken = authStorage.get("sessionToken") ?? "";
     if (userId && sessionToken) {
       try {
         const response = await api.logout(userId, sessionToken);
@@ -142,9 +143,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
       }
     }
     disconnectRealtime();
-    sessionStorage.removeItem("userId");
-    sessionStorage.removeItem("sessionUserId");
-    sessionStorage.removeItem("sessionToken");
+    authStorage.clear();
     setUserId(null);
   };
 

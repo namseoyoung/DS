@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { FormEvent, ReactNode, useMemo, useState } from "react";
 import { api, connectRealtime, disconnectRealtime } from "../lib/api";
+import { authStorage } from "../lib/authStorage";
 import type { Company, CompanyId, GameState, GameStatus, JobRank, User } from "../types";
 import { formatPercent, formatSignedWon, formatValue, formatWon } from "../utils/format";
 
@@ -47,7 +48,7 @@ const quickAnnouncements = [
 ];
 
 export function AdminPage({ state, setState, connected }: AdminPageProps) {
-  const [adminId, setAdminId] = useState(() => sessionStorage.getItem("adminId") ?? "");
+  const [adminId, setAdminId] = useState(() => authStorage.get("adminId") ?? "");
   const [id, setId] = useState("admin");
   const [password, setPassword] = useState("");
   const [newsTitle, setNewsTitle] = useState("");
@@ -81,9 +82,9 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
         setError("관리자 계정이 아닙니다.");
         return;
       }
-      sessionStorage.setItem("adminId", response.user.id);
-      sessionStorage.setItem("sessionUserId", response.user.id);
-      sessionStorage.setItem("sessionToken", response.sessionToken);
+      authStorage.set("adminId", response.user.id);
+      authStorage.set("sessionUserId", response.user.id);
+      authStorage.set("sessionToken", response.sessionToken);
       connectRealtime(response.user.id, response.sessionToken);
       setAdminId(response.user.id);
       setState(response.state);
@@ -93,7 +94,7 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
   };
 
   const handleLogout = async () => {
-    const sessionToken = sessionStorage.getItem("sessionToken") ?? "";
+    const sessionToken = authStorage.get("sessionToken") ?? "";
     if (adminId && sessionToken) {
       try {
         setState(await api.logout(adminId, sessionToken));
@@ -102,9 +103,7 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
       }
     }
     disconnectRealtime();
-    sessionStorage.removeItem("adminId");
-    sessionStorage.removeItem("sessionUserId");
-    sessionStorage.removeItem("sessionToken");
+    authStorage.clear();
     setAdminId("");
   };
 

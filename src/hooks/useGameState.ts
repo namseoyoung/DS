@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, connectRealtime, socket } from "../lib/api";
+import { authStorage } from "../lib/authStorage";
 import type { GameState } from "../types";
 
 export function useGameState() {
@@ -10,8 +11,8 @@ export function useGameState() {
   useEffect(() => {
     api.getState().then(setState).catch((caught: Error) => setError(caught.message));
 
-    const savedUserId = sessionStorage.getItem("sessionUserId");
-    const savedToken = sessionStorage.getItem("sessionToken");
+    const savedUserId = authStorage.get("sessionUserId");
+    const savedToken = authStorage.get("sessionToken");
     if (savedUserId && savedToken) {
       connectRealtime(savedUserId, savedToken);
     }
@@ -26,10 +27,21 @@ export function useGameState() {
       setIsConnected(false);
       setError(caught.message);
       if (caught.message.includes("세션") || caught.message.includes("로그인")) {
-        sessionStorage.removeItem("sessionUserId");
-        sessionStorage.removeItem("sessionToken");
-        sessionStorage.removeItem("userId");
-        sessionStorage.removeItem("adminId");
+        const savedUserId = authStorage.get("sessionUserId");
+        const savedToken = authStorage.get("sessionToken");
+        if (!savedUserId || !savedToken) return;
+
+        api
+          .restoreSession(savedUserId, savedToken)
+          .then((response) => {
+            authStorage.set("sessionUserId", response.user.id);
+            authStorage.set("sessionToken", response.sessionToken);
+            if (response.user.role === "admin") authStorage.set("adminId", response.user.id);
+            else authStorage.set("userId", response.user.id);
+            setState(response.state);
+            connectRealtime(response.user.id, response.sessionToken);
+          })
+          .catch(() => authStorage.clear());
       }
     };
 

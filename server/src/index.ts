@@ -39,6 +39,26 @@ const hasActiveSessionForUser = (userId: string) =>
     (session) => session.userId === userId && session.sockets.size > 0,
   );
 
+const createSession = (userId: string, role: "participant" | "admin") => {
+  if (role === "participant") {
+    const existingToken = participantSessionByUser.get(userId);
+    if (existingToken) activeSessionsByToken.delete(existingToken);
+  }
+
+  const sessionToken = crypto.randomUUID();
+  activeSessionsByToken.set(sessionToken, {
+    token: sessionToken,
+    userId,
+    role,
+    sockets: new Set(),
+    createdAt: Date.now(),
+  });
+  if (role === "participant") {
+    participantSessionByUser.set(userId, sessionToken);
+  }
+  return sessionToken;
+};
+
 app.use(cors({ origin: clientOrigin }));
 app.use(express.json());
 
@@ -100,19 +120,40 @@ app.post("/api/login", async (request, response, next) => {
       return;
     }
 
-    const sessionToken = crypto.randomUUID();
-    activeSessionsByToken.set(sessionToken, {
-      token: sessionToken,
-      userId: user.id,
-      role: user.role,
-      sockets: new Set(),
-      createdAt: Date.now(),
-    });
-    if (user.role === "participant") {
-      participantSessionByUser.set(user.id, sessionToken);
-    }
+    const sessionToken = createSession(user.id, user.role);
     const state = await broadcastState();
     response.json({ user, state, sessionToken });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+app.post("/api/session/restore", async (request, response, next) => {
+  try {
+    const userId = String(request.body.userId ?? "");
+    const previousToken = String(request.body.sessionToken ?? "");
+    if (!userId || !previousToken) {
+      response.status(401).json({ message: "로그인 세션이 만료되었습니다. 다시 로그인해 주세요." });
+      return;
+    }
+
+    const state = await store.getState();
+    const user = state.users.find((item) => item.id === userId);
+    if (!user) {
+      response.status(401).json({ message: "로그인 세션이 만료되었습니다. 다시 로그인해 주세요." });
+      return;
+    }
+
+    const existingSession = activeSessionsByToken.get(previousToken);
+    if (existingSession && existingSession.userId === user.id) {
+      response.json({ user, state: await withConnectedCount(), sessionToken: previousToken });
+      return;
+    }
+
+    const sessionToken = createSession(user.id, user.role);
+    await store.setOnline(user.id, false);
+    response.json({ user, state: await broadcastState(), sessionToken });
   } catch (error) {
     next(error);
   }
@@ -291,16 +332,8 @@ io.on("connection", async (socket) => {
     const currentSession = activeSessionsByToken.get(sessionToken);
     if (currentSession) {
       currentSession.sockets.delete(socket.id);
-      if (currentSession.sockets.size === 0) {
-        activeSessionsByToken.delete(sessionToken);
-        if (currentSession.role === "participant") {
-          participantSessionByUser.delete(userId);
-        }
-        void store.setOnline(userId, hasActiveSessionForUser(userId)).then(() => broadcastState());
-        return;
-      }
     }
-    void broadcastState();
+    void store.setOnline(userId, hasActiveSessionForUser(userId)).then(() => broadcastState());
   });
 });
 
