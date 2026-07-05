@@ -532,11 +532,11 @@ function PersonalProfitFlow({
             </div>
             <div className="h-36">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
+                <BarChart data={chartData} barCategoryGap="45%">
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis hide />
-                  <Tooltip formatter={(value) => formatSignedWon(Number(value))} />
-                  <Bar dataKey="profitAmount" radius={[10, 10, 10, 10]}>
+                  <Tooltip formatter={(value) => [formatSignedWon(Number(value)), "수익금"]} />
+                  <Bar dataKey="profitAmount" radius={[10, 10, 10, 10]} maxBarSize={52}>
                     {chartData.map((item) => (
                       <Cell key={item.label} fill={item.profitAmount >= 0 ? "#ef4444" : "#3b82f6"} />
                     ))}
@@ -556,8 +556,8 @@ function PersonalProfitFlow({
                 <LineChart data={chartData}>
                   <XAxis dataKey="label" hide />
                   <YAxis hide domain={["dataMin - 100", "dataMax + 100"]} />
-                  <Tooltip formatter={(value) => formatPercent(Number(value))} />
-                  <Line type="monotone" dataKey="returnRate" stroke="#0f172a" strokeWidth={3} dot={{ r: 3 }} isAnimationActive />
+                  <Tooltip formatter={(value) => [formatPercent(Number(value)), "수익률"]} />
+                  <Line type="monotone" dataKey="returnRate" name="수익률" stroke="#0f172a" strokeWidth={3} dot={{ r: 3 }} isAnimationActive />
                 </LineChart>
               </ResponsiveContainer>
             </div>
