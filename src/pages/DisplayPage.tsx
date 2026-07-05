@@ -60,7 +60,7 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
   });
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-slate-950 px-4 py-5 text-white sm:px-6 sm:py-6">
+    <main className="min-h-screen overflow-x-hidden bg-slate-950 px-4 py-4 text-white sm:px-6 sm:py-5 lg:h-screen lg:overflow-hidden">
       <section className="mx-auto max-w-7xl">
         <div className="grid gap-4 lg:flex lg:items-end lg:justify-between">
           <div>
@@ -80,10 +80,10 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-4 lg:mt-6 lg:grid-cols-[1.35fr_0.9fr] lg:gap-5">
-          <section className="rounded-card bg-white p-5 text-slate-950 sm:p-6">
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1.55fr_0.85fr] lg:gap-5">
+          <section className="rounded-card bg-white p-4 text-slate-950 sm:p-5">
             <h2 className="text-lg font-bold sm:text-xl">실시간 기업 가치 그래프</h2>
-            <div className="mt-4 h-[300px] sm:h-[410px]">
+            <div className="mt-3 h-[245px] sm:h-[285px] lg:h-[270px] xl:h-[290px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <CartesianGrid stroke="#e2e8f0" />
@@ -109,22 +109,11 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                 </LineChart>
               </ResponsiveContainer>
             </div>
+            <CompanyTopFive companies={state.companies.slice(0, 5)} />
           </section>
 
-          <section className="grid gap-5">
-            <Panel title="기업 TOP5">
-              {state.companies.slice(0, 5).map((company) => (
-                <RankLine
-                  key={company.id}
-                  rank={company.rank}
-                  name={company.name}
-                  main={formatValue(company.currentValue)}
-                  logoUrl={company.logoUrl}
-                  avatarColor={company.color}
-                />
-              ))}
-            </Panel>
-                        <Panel title="개인 자산 6-10위">
+          <section className="grid gap-4">
+            <Panel title="개인 자산 6-10위">
               {state.personalRankingRevealed ? (
                 state.participants.slice(5, 10).map((user) => (
                   <RankLine
@@ -142,7 +131,7 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
           </section>
         </div>
 
-                <div className="mt-4 grid gap-4 lg:mt-5 lg:grid-cols-2 lg:gap-5">
+        <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:gap-5">
           <Feed icon={<Newspaper size={20} />} title="최신 뉴스" items={state.news.map((item) => item.title + ": " + item.content)} />
           <Feed icon={<Bell size={20} />} title="최신 공지" items={state.announcements.map((item) => item.content)} />
         </div>
@@ -215,9 +204,30 @@ function DisplayStat({ label, value, urgent }: { label: string; value: string; u
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-card bg-white p-5 text-slate-950 sm:p-6">
+    <section className="rounded-card bg-white p-4 text-slate-950 sm:p-5">
       <h2 className="text-lg font-bold sm:text-xl">{title}</h2>
-      <div className="mt-4 space-y-3">{children}</div>
+      <div className="mt-3 space-y-2">{children}</div>
+    </section>
+  );
+}
+
+
+function CompanyTopFive({ companies }: { companies: GameState["companies"] }) {
+  return (
+    <section className="mt-4 border-t border-slate-100 pt-4">
+      <h3 className="text-base font-bold sm:text-lg">기업 TOP5</h3>
+      <div className="mt-3 grid grid-cols-5 gap-2">
+        {companies.map((company) => (
+          <div key={company.id} className="min-w-0 rounded-button bg-slate-50 px-2 py-3 text-center">
+            <p className="text-sm font-black text-slate-400">{company.rank}</p>
+            <div className="mt-1 flex justify-center">
+              <CompanyAvatar logoUrl={company.logoUrl} color={company.color} name={company.name} compact />
+            </div>
+            <p className="mt-2 truncate text-sm font-bold">{company.name}</p>
+            <p className="mt-1 truncate text-sm font-black sm:text-base">{formatValue(company.currentValue)}</p>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
@@ -254,20 +264,32 @@ function RankLine({
   );
 }
 
-function CompanyAvatar({ logoUrl, color, name }: { logoUrl?: string; color?: string; name: string }) {
+function CompanyAvatar({
+  logoUrl,
+  color,
+  name,
+  compact,
+}: {
+  logoUrl?: string;
+  color?: string;
+  name: string;
+  compact?: boolean;
+}) {
+  const sizeClass = compact ? "h-8 w-8 sm:h-9 sm:w-9" : "h-10 w-10 sm:h-11 sm:w-11";
+
   if (logoUrl) {
     return (
       <img
         src={logoUrl}
         alt=""
-        className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-slate-200 sm:h-11 sm:w-11"
+        className={`${sizeClass} shrink-0 rounded-full object-cover ring-1 ring-slate-200`}
       />
     );
   }
 
   return (
     <div
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black text-white sm:h-11 sm:w-11"
+      className={`${sizeClass} flex shrink-0 items-center justify-center rounded-full text-sm font-black text-white`}
       style={{ backgroundColor: color ?? "#0f172a" }}
     >
       {name.slice(0, 1)}
@@ -302,17 +324,17 @@ function Feed({
   items: string[];
 }) {
   return (
-    <section className="rounded-card bg-white/10 p-5 sm:p-6">
-      <h2 className="flex items-center gap-2 text-lg font-bold sm:text-xl">
+    <section className="rounded-card bg-white/10 p-4 sm:p-5">
+      <h2 className="flex items-center gap-2 text-base font-bold sm:text-lg">
         {icon}
         {title}
       </h2>
-      <div className="mt-4 space-y-2">
+      <div className="mt-3 space-y-2">
         {items.length === 0 ? (
           <p className="text-slate-300">표시할 내용이 없습니다.</p>
         ) : (
-          items.slice(0, 4).map((item) => (
-            <p key={item} className="rounded-button bg-white/10 px-3 py-2 text-sm">
+          items.slice(0, 3).map((item) => (
+            <p key={item} className="truncate rounded-button bg-white/10 px-3 py-1.5 text-xs sm:text-sm">
               {item}
             </p>
           ))
