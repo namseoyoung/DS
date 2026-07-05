@@ -195,18 +195,8 @@ app.post("/api/investments", async (request, response, next) => {
   }
 });
 
-app.post("/api/withdrawals", async (request, response, next) => {
-  try {
-    const userId = String(request.body.userId ?? "");
-    const companyId = String(request.body.companyId ?? "") as CompanyId;
-
-    const log = await store.withdraw(userId, companyId);
-    const state = await broadcastState();
-    io.emit("transaction:created", log);
-    response.status(201).json({ log, state });
-  } catch (error) {
-    next(error);
-  }
+app.post("/api/withdrawals", (_request, response) => {
+  response.status(403).json({ message: "투자금 회수는 관리자 전체 회수로만 진행할 수 있습니다." });
 });
 
 app.post("/api/admin/status", async (request, response, next) => {
@@ -230,6 +220,14 @@ app.post("/api/admin/pay-salary", async (request, response, next) => {
 app.post("/api/admin/settle", async (request, response, next) => {
   try {
     await runAdminAction(request, response, () => store.settleYear(request.body.changes ?? {}));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/admin/withdraw-all", async (request, response, next) => {
+  try {
+    await runAdminAction(request, response, () => store.withdrawAllRoundInvestments());
   } catch (error) {
     next(error);
   }

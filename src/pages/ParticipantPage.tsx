@@ -91,7 +91,6 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [profileCompany, setProfileCompany] = useState<Company | null>(null);
   const [dismissedAnnouncementId, setDismissedAnnouncementId] = useState<string | null>(null);
-  const [withdrawingCompanyId, setWithdrawingCompanyId] = useState<CompanyId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [feedSheet, setFeedSheet] = useState<"news" | "announcements" | null>(null);
@@ -156,21 +155,6 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
     setState(response.state);
   };
 
-  const handleWithdraw = async (companyId: CompanyId) => {
-    if (!userId || withdrawingCompanyId) return;
-    const shouldWithdraw = window.confirm("이 기업의 보유 투자금을 모두 전액 회수할까요?");
-    if (!shouldWithdraw) return;
-
-    setWithdrawingCompanyId(companyId);
-    try {
-      const response = await api.withdraw(userId, companyId);
-      setState(response.state);
-    } catch (caught) {
-      window.alert(caught instanceof Error ? caught.message : "투자금 회수에 실패했습니다.");
-    } finally {
-      setWithdrawingCompanyId(null);
-    }
-  };
 
   if (!state) {
     return <LoadingView label="서버 상태를 불러오는 중" />;
@@ -221,10 +205,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   }
 
   const canInvest = canInvestInStatus(state.status);
-  const canWithdraw =
-    state.status !== "FINISHED" &&
-    state.status !== "ROUND_INVESTING" &&
-    state.status !== "ROUND_RESULT";
+
   const isRoundResult = state.status === "ROUND_RESULT";
   const showCountdown = (canInvest || isRoundResult) && state.remainingSeconds > 0;
   const isLastTenSeconds = showCountdown && state.remainingSeconds <= 10;
@@ -423,14 +404,9 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
                     />
                     <Info label="기업가치" value={formatValue(holding.currentValue)} />
                   </div>
-                  <button
-                    type="button"
-                    disabled={!canWithdraw || withdrawingCompanyId === holding.companyId}
-                    onClick={() => handleWithdraw(holding.companyId)}
-                    className="mt-4 h-[46px] w-full rounded-button border border-slate-200 bg-white text-sm font-bold text-slate-950 transition active:scale-[0.99] disabled:bg-slate-100 disabled:text-slate-400"
-                  >
-                    {withdrawingCompanyId === holding.companyId ? "전액 회수 중" : "전액 회수"}
-                  </button>
+                  <p className="mt-4 rounded-button bg-slate-50 px-4 py-3 text-sm font-bold text-slate-500">
+                    회수는 관리자 정산 후 전체 회수로 진행됩니다.
+                  </p>
                 </div>
               ))}
             </div>
@@ -489,16 +465,15 @@ function PersonalProfitFlow({ results, logs }: { results: UserYearlyResult[]; lo
   const [isLogSheetOpen, setIsLogSheetOpen] = useState(false);
   const previewLogs = logs.slice(0, 3);
   const sortedResults = results.slice().sort((a, b) => a.year - b.year);
-  const totalProfit = sortedResults.reduce((sum, result) => sum + result.profitAmount, 0);
+  const totalGain = sortedResults.reduce((sum, result) => sum + Math.max(0, result.profitAmount), 0);
+  const totalLoss = sortedResults.reduce((sum, result) => sum + Math.abs(Math.min(0, result.profitAmount)), 0);
+  const netProfit = totalGain - totalLoss;
   const totalWithdrawn = sortedResults.reduce((sum, result) => sum + result.withdrawnAmount, 0);
-  const bestResult = sortedResults.reduce<UserYearlyResult | null>(
-    (best, result) => (!best || result.profitAmount > best.profitAmount ? result : best),
-    null,
-  );
   const chartData = sortedResults.map((result) => ({
     label: String(result.year) + "년차",
     profitAmount: result.profitAmount,
     totalAsset: result.totalAsset,
+    returnRate: result.returnRate,
   }));
 
   return (
@@ -508,15 +483,15 @@ function PersonalProfitFlow({ results, logs }: { results: UserYearlyResult[]; lo
           <p className="text-xs font-bold text-slate-400">내 기록</p>
           <h2 className="mt-1 text-lg font-bold text-slate-950">내 수익 흐름</h2>
         </div>
-        <span className={"rounded-full px-3 py-1 text-xs font-bold " + (totalProfit >= 0 ? "bg-red-50 text-red-500" : "bg-blue-50 text-blue-500") }>
-          {formatSignedWon(totalProfit)}
+        <span className={"rounded-full px-3 py-1 text-xs font-bold " + (netProfit >= 0 ? "bg-red-50 text-red-500" : "bg-blue-50 text-blue-500") }>
+          {formatSignedWon(netProfit)}
         </span>
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2">
-        <Info label="누적 수익" value={formatSignedWon(totalProfit)} valueClassName={totalProfit >= 0 ? "text-red-500" : "text-blue-500"} />
+        <Info label="누적 수익" value={formatWon(totalGain)} valueClassName="text-red-500" />
+        <Info label="누적 손해" value={formatWon(totalLoss)} valueClassName="text-blue-500" />
         <Info label="회수 금액" value={formatWon(totalWithdrawn)} />
-        <Info label="최고 연차" value={bestResult ? String(bestResult.year) + "년차" : "-"} />
       </div>
 
       {chartData.length > 0 ? (
@@ -544,16 +519,16 @@ function PersonalProfitFlow({ results, logs }: { results: UserYearlyResult[]; lo
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-950">총자산 변화</h3>
-              <span className="text-xs font-semibold text-slate-400">정산 기준</span>
+              <h3 className="text-sm font-bold text-slate-950">수익률 변화</h3>
+              <span className="text-xs font-semibold text-slate-400">연차별 %</span>
             </div>
             <div className="h-32">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <XAxis dataKey="label" hide />
                   <YAxis hide domain={["dataMin - 100", "dataMax + 100"]} />
-                  <Tooltip formatter={(value) => formatWon(Number(value))} />
-                  <Line type="monotone" dataKey="totalAsset" stroke="#0f172a" strokeWidth={3} dot={{ r: 3 }} isAnimationActive />
+                  <Tooltip formatter={(value) => formatPercent(Number(value))} />
+                  <Line type="monotone" dataKey="returnRate" stroke="#0f172a" strokeWidth={3} dot={{ r: 3 }} isAnimationActive />
                 </LineChart>
               </ResponsiveContainer>
             </div>

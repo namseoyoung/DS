@@ -88,6 +88,11 @@ export const api = {
       method: "POST",
       body: adminBody(adminId, { changes }),
     }),
+  withdrawAll: (adminId: string) =>
+    request<GameState>("/api/admin/withdraw-all", {
+      method: "POST",
+      body: adminBody(adminId),
+    }),
   advanceYear: (adminId: string) =>
     request<GameState>("/api/admin/advance-year", {
       method: "POST",

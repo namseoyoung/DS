@@ -244,6 +244,7 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
             <Control icon={<Play size={16} />} label="투자 시작" onClick={() => run(() => api.setStatus(admin.id, "INVESTING", Number(duration)))} />
             <Control icon={<Clock size={16} />} label="투자 마감" onClick={() => run(() => api.setStatus(admin.id, "INVEST_CLOSED"))} />
             <Control icon={<Trophy size={16} />} label="정산 확정" onClick={() => run(() => api.settle(admin.id, parseSettlement(settlement)), "정산을 확정할까요?")} />
+            <Control icon={<RefreshCw size={16} />} label="전체 회수" onClick={() => run(() => api.withdrawAll(admin.id), "현재 연차 투자금을 모두 회수할까요?")} />
             <Control icon={<SkipBack size={16} />} label="이전 연차" onClick={() => run(() => api.retreatYear(admin.id), "이전 연차로 돌아갈까요?")} />
             <Control icon={<SkipForward size={16} />} label="다음 연차" onClick={() => run(() => api.advanceYear(admin.id), "다음 연차로 이동할까요?")} />
             <Control icon={<Play size={16} />} label="4년차 라운드 시작" onClick={() => run(() => api.setStatus(admin.id, "ROUND_INVESTING", 60))} />
