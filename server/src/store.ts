@@ -136,6 +136,7 @@ export type Store = {
   advanceYear(): Promise<void>;
   retreatYear(): Promise<void>;
   advanceRound(): Promise<void>;
+  settleRound(): Promise<void>;
   withdrawAllRoundInvestments(): Promise<void>;
   realtimeTick(): Promise<void>;
   publishNews(title: string, content: string): Promise<void>;
@@ -156,8 +157,6 @@ const getRemainingSeconds = (timerEndsAt: string | null) => {
   return Math.max(0, Math.ceil((Date.parse(timerEndsAt) - Date.now()) / 1000));
 };
 
-const ROUND_INVEST_SECONDS = 60;
-const ROUND_RESULT_SECONDS = 20;
 const MAX_ROUNDS = 10;
 
 const isTimedPlayStatus = (status: GameStatus) =>
@@ -784,7 +783,11 @@ class MemoryStore implements Store {
 
   async advanceYear() {
     this.session.year = Math.min(4, this.session.year + 1);
-    await this.setStatus(this.session.year === 4 ? "ROUND_INVESTING" : "YEAR_ENDED", this.session.year === 4 ? ROUND_INVEST_SECONDS : undefined);
+    await this.setStatus(this.session.year === 4 ? "ROUND_INVESTING" : "YEAR_ENDED");
+    if (this.session.year === 4) {
+      this.session.timer_ends_at = null;
+      this.session.paused_remaining_seconds = null;
+    }
   }
 
   async retreatYear() {
@@ -803,7 +806,16 @@ class MemoryStore implements Store {
       return;
     }
     this.session.current_round = currentRound + 1;
-    await this.setStatus("ROUND_INVESTING", ROUND_INVEST_SECONDS);
+    await this.setStatus("ROUND_INVESTING");
+    this.session.timer_ends_at = null;
+    this.session.paused_remaining_seconds = null;
+  }
+
+  async settleRound() {
+    await this.realtimeTick();
+    await this.setStatus("ROUND_RESULT");
+    this.session.timer_ends_at = null;
+    this.session.paused_remaining_seconds = null;
   }
 
   async withdrawAllRoundInvestments() {
@@ -1517,8 +1529,7 @@ class SupabaseStore extends MemoryStore {
         max_rounds: MAX_ROUNDS,
         previous_status: state.status,
         status: nextYear === 4 ? "ROUND_INVESTING" : "YEAR_ENDED",
-        timer_ends_at:
-          nextYear === 4 ? new Date(Date.now() + ROUND_INVEST_SECONDS * 1000).toISOString() : null,
+        timer_ends_at: null,
         paused_remaining_seconds: null,
         updated_at: now(),
       })
@@ -1556,7 +1567,22 @@ class SupabaseStore extends MemoryStore {
         current_round: state.currentRound + 1,
         previous_status: state.status,
         status: "ROUND_INVESTING",
-        timer_ends_at: new Date(Date.now() + ROUND_INVEST_SECONDS * 1000).toISOString(),
+        timer_ends_at: null,
+        paused_remaining_seconds: null,
+        updated_at: now(),
+      })
+      .eq("id", DEFAULT_SESSION_ID);
+  }
+
+  async settleRound() {
+    await this.realtimeTick();
+    const state = await this.getState();
+    await this.supabase
+      .from("game_status")
+      .update({
+        previous_status: state.status,
+        status: "ROUND_RESULT",
+        timer_ends_at: null,
         paused_remaining_seconds: null,
         updated_at: now(),
       })

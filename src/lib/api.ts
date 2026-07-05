@@ -93,6 +93,16 @@ export const api = {
       method: "POST",
       body: adminBody(adminId),
     }),
+  advanceRound: (adminId: string) =>
+    request<GameState>("/api/admin/advance-round", {
+      method: "POST",
+      body: adminBody(adminId),
+    }),
+  settleRound: (adminId: string) =>
+    request<GameState>("/api/admin/settle-round", {
+      method: "POST",
+      body: adminBody(adminId),
+    }),
   advanceYear: (adminId: string) =>
     request<GameState>("/api/admin/advance-year", {
       method: "POST",
