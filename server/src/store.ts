@@ -170,10 +170,11 @@ const getInvestmentAmount = (investment: DbInvestment) =>
 
 const calculateEvaluatedInvestment = (
   investment: DbInvestment,
-  company: Pick<DbCompany, "initial_capital" | "current_value">,
+  company: Pick<DbCompany, "initial_capital" | "current_value" | "previous_value">,
 ) => {
   const investedAmount = getInvestmentAmount(investment);
-  const evaluatedAmount = investedAmount * (company.current_value / company.initial_capital);
+  const basisValue = company.previous_value > 0 ? company.previous_value : company.initial_capital;
+  const evaluatedAmount = basisValue > 0 ? investedAmount * (company.current_value / basisValue) : investedAmount;
   const profitRate =
     investedAmount === 0 ? 0 : ((evaluatedAmount - investedAmount) / investedAmount) * 100;
   return { investedAmount, evaluatedAmount, profitRate };
@@ -181,20 +182,14 @@ const calculateEvaluatedInvestment = (
 
 const calculateVisibleInvestment = (
   investment: DbInvestment,
-  company: Pick<DbCompany, "initial_capital" | "current_value">,
+  company: Pick<DbCompany, "initial_capital" | "current_value" | "previous_value">,
   useRealtimeValuation: boolean,
 ) => {
   if (useRealtimeValuation && investment.year === 4) {
     return calculateEvaluatedInvestment(investment, company);
   }
 
-  const investedAmount = getInvestmentAmount(investment);
-  const settledAmount = Number(investment.evaluated_amount ?? 0);
-  const evaluatedAmount = settledAmount > 0 ? settledAmount : investedAmount;
-  const profitRate =
-    investedAmount === 0 ? 0 : ((evaluatedAmount - investedAmount) / investedAmount) * 100;
-
-  return { investedAmount, evaluatedAmount, profitRate };
+  return calculateEvaluatedInvestment(investment, company);
 };
 
 const getRealtimeOrderScore = (
@@ -326,6 +321,7 @@ const calculateState = (
             {
               initial_capital: company.initialCapital,
               current_value: company.currentValue,
+              previous_value: company.previousValue,
             },
             useRealtimeValuation,
           );
@@ -607,6 +603,7 @@ class MemoryStore implements Store {
           {
             initial_capital: company.initial_capital,
             current_value: company.current_value,
+            previous_value: company.previous_value,
           },
           this.session.year === 4,
         );
@@ -1321,6 +1318,7 @@ class SupabaseStore extends MemoryStore {
           {
             initial_capital: company.initialCapital,
             current_value: company.currentValue,
+            previous_value: company.previousValue,
           },
           state.year === 4,
         );
@@ -1516,6 +1514,7 @@ class SupabaseStore extends MemoryStore {
         ...company,
         initial_capital: company.initialCapital,
         current_value: company.currentValue,
+        previous_value: company.previousValue,
       });
       const settledInvestment = {
         ...investment,
@@ -1682,6 +1681,7 @@ class SupabaseStore extends MemoryStore {
       const valuation = calculateEvaluatedInvestment(investment, {
         initial_capital: company.initialCapital,
         current_value: company.currentValue,
+        previous_value: company.previousValue,
       });
       const payout = Math.max(0, Math.floor(valuation.evaluatedAmount));
       payoutsByUser.set(user.id, (payoutsByUser.get(user.id) ?? 0) + payout);
