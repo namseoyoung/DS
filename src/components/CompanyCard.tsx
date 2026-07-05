@@ -68,9 +68,9 @@ export function CompanyCard({ company, investedAmount, evaluatedAmount, canInves
           </p>
         </div>
         <div className="min-w-0 rounded-button bg-slate-50 px-3 py-2">
-          <span className="text-xs font-medium text-slate-500">총 투자</span>
-          <p className="money-text money-text-mini mt-1 font-bold text-slate-950">
-            {formatWon(company.totalInvestment)}
+          <span className="text-xs font-medium text-slate-500">변동률</span>
+          <p className={`money-text money-text-mini mt-1 font-bold ${company.changeRate >= 0 ? "text-red-500" : "text-blue-500"}`}>
+            {formatPercent(company.changeRate)}
           </p>
         </div>
         <div className="min-w-0 rounded-button bg-slate-50 px-3 py-2">
