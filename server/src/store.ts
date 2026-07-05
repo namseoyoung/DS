@@ -1,4 +1,4 @@
-﻿import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
   Announcement,
   Company,
@@ -810,20 +810,61 @@ class MemoryStore implements Store {
     const roundInvestments = this.investments.filter(
       (investment) => investment.year === this.session.year && getInvestmentAmount(investment) > 0,
     );
+    const yearlySnapshots = new Map<
+      string,
+      { startingCash: number; investedAmount: number; evaluatedAmount: number; payout: number }
+    >();
+
     for (const investment of roundInvestments) {
       const user = this.users.find((item) => item.id === investment.user_id);
       const company = this.companies.find((item) => item.id === investment.company_id);
       if (!user || !company) continue;
       const valuation = calculateEvaluatedInvestment(investment, company);
       const payout = Math.max(0, Math.floor(valuation.evaluatedAmount));
+      const snapshot = yearlySnapshots.get(user.id) ?? {
+        startingCash: user.cash,
+        investedAmount: 0,
+        evaluatedAmount: 0,
+        payout: 0,
+      };
+      snapshot.investedAmount += valuation.investedAmount;
+      snapshot.evaluatedAmount += valuation.evaluatedAmount;
+      snapshot.payout += payout;
+      yearlySnapshots.set(user.id, snapshot);
+
       user.cash += payout;
-      this.addMemoryWithdrawalResult(user.id, this.session.year, payout, user.cash);
       company.total_investment = Math.max(
         0,
         Number(company.total_investment ?? 0) - valuation.investedAmount,
       );
       this.addLog(user.id, user.real_name, company.id, company.name, payout, "WITHDRAW");
     }
+
+    for (const [userId, snapshot] of yearlySnapshots.entries()) {
+      const user = this.users.find((item) => item.id === userId);
+      if (!user) continue;
+      const existing = this.yearlyResults.find(
+        (item) => item.user_id === userId && item.year === this.session.year,
+      );
+      if (existing) {
+        this.addMemoryWithdrawalResult(userId, this.session.year, snapshot.payout, user.cash);
+        continue;
+      }
+      const profitAmount = snapshot.evaluatedAmount - snapshot.investedAmount;
+      this.upsertMemoryYearlyResult({
+        user_id: userId,
+        year: this.session.year,
+        starting_cash: snapshot.startingCash,
+        invested_amount: snapshot.investedAmount,
+        evaluated_amount: snapshot.evaluatedAmount,
+        profit_amount: profitAmount,
+        withdrawn_amount: snapshot.payout,
+        ending_cash: user.cash,
+        total_asset: user.cash,
+        return_rate: snapshot.investedAmount === 0 ? 0 : (profitAmount / snapshot.investedAmount) * 100,
+      });
+    }
+
     const withdrawnIds = new Set(roundInvestments.map((investment) => investment.id));
     this.investments = this.investments.filter((investment) => !withdrawnIds.has(investment.id));
     this.session.updated_at = now();
@@ -1529,6 +1570,10 @@ class SupabaseStore extends MemoryStore {
       .select("*")
       .eq("year", state.year);
     const payoutsByUser = new Map<string, number>();
+    const yearlySnapshots = new Map<
+      string,
+      { startingCash: number; investedAmount: number; evaluatedAmount: number; payout: number }
+    >();
     const investedByCompany = new Map<CompanyId, number>();
     const logs: Array<{
       user_id: string;
@@ -1552,6 +1597,16 @@ class SupabaseStore extends MemoryStore {
       });
       const payout = Math.max(0, Math.floor(valuation.evaluatedAmount));
       payoutsByUser.set(user.id, (payoutsByUser.get(user.id) ?? 0) + payout);
+      const snapshot = yearlySnapshots.get(user.id) ?? {
+        startingCash: user.cash,
+        investedAmount: 0,
+        evaluatedAmount: 0,
+        payout: 0,
+      };
+      snapshot.investedAmount += valuation.investedAmount;
+      snapshot.evaluatedAmount += valuation.evaluatedAmount;
+      snapshot.payout += payout;
+      yearlySnapshots.set(user.id, snapshot);
       investedByCompany.set(
         company.id,
         (investedByCompany.get(company.id) ?? 0) + valuation.investedAmount,
@@ -1584,10 +1639,28 @@ class SupabaseStore extends MemoryStore {
           .update({
             withdrawn_amount: Number(yearlyResult.withdrawn_amount ?? 0) + payout,
             ending_cash: endingCash,
+            total_asset: endingCash,
             updated_at: now(),
           })
           .eq("user_id", userId)
           .eq("year", state.year);
+      } else {
+        const snapshot = yearlySnapshots.get(userId);
+        if (!snapshot) continue;
+        const profitAmount = snapshot.evaluatedAmount - snapshot.investedAmount;
+        await this.supabase.from("user_yearly_results").insert({
+          user_id: userId,
+          year: state.year,
+          starting_cash: snapshot.startingCash,
+          invested_amount: snapshot.investedAmount,
+          evaluated_amount: snapshot.evaluatedAmount,
+          profit_amount: profitAmount,
+          withdrawn_amount: snapshot.payout,
+          ending_cash: endingCash,
+          total_asset: endingCash,
+          return_rate: snapshot.investedAmount === 0 ? 0 : (profitAmount / snapshot.investedAmount) * 100,
+          updated_at: now(),
+        });
       }
     }
     for (const [companyId, investedAmount] of investedByCompany.entries()) {

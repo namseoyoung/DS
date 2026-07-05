@@ -476,7 +476,30 @@ function PersonalProfitFlow({
 }) {
   const [isLogSheetOpen, setIsLogSheetOpen] = useState(false);
   const previewLogs = logs.slice(0, 3);
-  const sortedResults = results.slice().sort((a, b) => a.year - b.year);
+  const resultYears = new Set(results.map((result) => result.year));
+  const recoveredResults = Array.from(
+    new Set(logs.filter((log) => log.actionType === "WITHDRAW").map((log) => log.year)),
+  )
+    .filter((year) => !resultYears.has(year))
+    .map((year) => {
+      const yearLogs = logs.filter((log) => log.year === year);
+      const investedAmount = yearLogs
+        .filter((log) => log.actionType === "INVEST")
+        .reduce((sum, log) => sum + log.amount, 0);
+      const withdrawnAmount = yearLogs
+        .filter((log) => log.actionType === "WITHDRAW")
+        .reduce((sum, log) => sum + log.amount, 0);
+      const profitAmount = withdrawnAmount - investedAmount;
+      return {
+        year,
+        profitAmount,
+        withdrawnAmount,
+        returnRate: investedAmount === 0 ? 0 : (profitAmount / investedAmount) * 100,
+        totalAsset: withdrawnAmount,
+        isRecovered: true,
+      };
+    });
+  const sortedResults = [...results, ...recoveredResults].sort((a, b) => a.year - b.year);
   const hasCurrentYearResult = sortedResults.some((result) => result.year === currentYear);
   const currentInvestedAmount = holdings.reduce((sum, holding) => sum + holding.investedAmount, 0);
   const currentEvaluatedAmount = holdings.reduce((sum, holding) => sum + holding.evaluatedAmount, 0);
