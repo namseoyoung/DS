@@ -1106,15 +1106,15 @@ class SupabaseStore extends MemoryStore {
 
   async getState() {
     const [
-      { data: session },
-      { data: companies },
-      { data: users },
-      { data: investments },
-      { data: history },
-      { data: logs },
-      { data: yearlyResults },
-      { data: news },
-      { data: announcements },
+      sessionResult,
+      companiesResult,
+      usersResult,
+      investmentsResult,
+      historyResult,
+      logsResult,
+      yearlyResultsResult,
+      newsResult,
+      announcementsResult,
     ] = await Promise.all([
       this.supabase.from("game_status").select("*").eq("id", DEFAULT_SESSION_ID).single(),
       this.supabase.from("companies").select("*").order("id"),
@@ -1131,9 +1131,29 @@ class SupabaseStore extends MemoryStore {
         .limit(20),
     ]);
 
-    if (!session || !companies || !users || !investments || !history || !logs) {
-      throw new Error("Supabase 상태를 불러오지 못했습니다.");
+    const requiredResults = [
+      ["game_status", sessionResult],
+      ["companies", companiesResult],
+      ["users", usersResult],
+      ["investments", investmentsResult],
+      ["company_value_history", historyResult],
+      ["transactions", logsResult],
+    ] as const;
+    const failedRequired = requiredResults.find(([, result]) => result.error || !result.data);
+    if (failedRequired) {
+      const [name, result] = failedRequired;
+      throw new Error(`Supabase 상태를 불러오지 못했습니다: ${name} ${result.error?.message ?? "데이터 없음"}`);
     }
+
+    const session = sessionResult.data;
+    const companies = companiesResult.data;
+    const users = usersResult.data;
+    const investments = investmentsResult.data;
+    const history = historyResult.data;
+    const logs = logsResult.data;
+    const yearlyResults = yearlyResultsResult.data ?? [];
+    const news = newsResult.data ?? [];
+    const announcements = announcementsResult.data ?? [];
 
     return calculateState(
       session as DbSession,
