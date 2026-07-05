@@ -35,6 +35,7 @@ type DbSession = {
   current_round?: number | null;
   max_rounds?: number | null;
   capacity: number;
+  personal_ranking_revealed?: boolean | null;
   updated_at: string;
 };
 
@@ -129,6 +130,7 @@ export type Store = {
   invest(userId: string, companyId: CompanyId, amount: number): Promise<TransactionLog>;
   withdraw(userId: string, companyId: CompanyId): Promise<TransactionLog>;
   setStatus(status: GameStatus, durationSeconds?: number): Promise<void>;
+  setPersonalRankingRevealed(revealed: boolean): Promise<void>;
   paySalary(): Promise<void>;
   settleYear(changes: Partial<Record<CompanyId, number>>): Promise<void>;
   advanceYear(): Promise<void>;
@@ -403,6 +405,7 @@ const calculateState = (
     maxRounds: session.max_rounds ?? MAX_ROUNDS,
     connectedCount: users.filter((user) => user.isOnline).length,
     capacity: session.capacity,
+    personalRankingRevealed: Boolean(session.personal_ranking_revealed),
     companies,
     users,
     participants,
@@ -687,6 +690,11 @@ class MemoryStore implements Store {
       this.session.timer_ends_at = null;
       this.session.paused_remaining_seconds = null;
     }
+    this.session.updated_at = now();
+  }
+
+  async setPersonalRankingRevealed(revealed: boolean) {
+    this.session.personal_ranking_revealed = revealed;
     this.session.updated_at = now();
   }
 
@@ -998,6 +1006,7 @@ class SupabaseStore extends MemoryStore {
       current_round: 1,
       max_rounds: MAX_ROUNDS,
       capacity: CAPACITY,
+      personal_ranking_revealed: false,
     });
 
     const { data: companies } = await this.supabase.from("companies").select("id");
@@ -1338,6 +1347,13 @@ class SupabaseStore extends MemoryStore {
         }
       }
     }
+  }
+
+  async setPersonalRankingRevealed(revealed: boolean) {
+    await this.supabase
+      .from("game_status")
+      .update({ personal_ranking_revealed: revealed, updated_at: now() })
+      .eq("id", DEFAULT_SESSION_ID);
   }
 
   async paySalary() {

@@ -250,6 +250,11 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
             <Control icon={<RefreshCw size={16} />} label="라운드 결과 수동 갱신" onClick={() => run(() => api.realtimeTick(admin.id))} />
             <Control icon={<Pause size={16} />} label="일시정지" onClick={() => run(() => api.setStatus(admin.id, "PAUSED"))} />
             <Control icon={<Play size={16} />} label="재개" onClick={() => run(() => api.setStatus(admin.id, state.previousStatus ?? "INVESTING"))} />
+            <Control
+              icon={<Trophy size={16} />}
+              label={state.personalRankingRevealed ? "개인랭킹 숨김" : "개인랭킹 공개"}
+              onClick={() => run(() => api.setPersonalRankingRevealed(admin.id, !state.personalRankingRevealed))}
+            />
             <Control icon={<Trophy size={16} />} label="게임 종료" onClick={() => run(() => api.setStatus(admin.id, "FINISHED"), "게임을 종료할까요?")} />
             <Control icon={<RotateCcw size={16} />} label="전체 초기화" danger onClick={() => run(() => api.reset(admin.id), "전체 데이터를 초기화할까요?")} />
           </div>

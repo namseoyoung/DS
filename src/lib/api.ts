@@ -113,6 +113,11 @@ export const api = {
       method: "POST",
       body: adminBody(adminId, { content }),
     }),
+  setPersonalRankingRevealed: (adminId: string, revealed: boolean) =>
+    request<GameState>("/api/admin/personal-ranking", {
+      method: "POST",
+      body: adminBody(adminId, { revealed }),
+    }),
   updateUser: (
     adminId: string,
     userId: string,

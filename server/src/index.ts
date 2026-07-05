@@ -279,6 +279,16 @@ app.post("/api/admin/announcements", async (request, response, next) => {
   }
 });
 
+app.post("/api/admin/personal-ranking", async (request, response, next) => {
+  try {
+    await runAdminAction(request, response, () =>
+      store.setPersonalRankingRevealed(Boolean(request.body.revealed)),
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.patch("/api/admin/users/:userId", async (request, response, next) => {
   try {
     await runAdminAction(request, response, () => store.updateUser(request.params.userId, request.body.patch ?? {}));

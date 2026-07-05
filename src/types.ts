@@ -124,6 +124,7 @@ export type GameState = {
   maxRounds: number;
   connectedCount: number;
   capacity: number;
+  personalRankingRevealed: boolean;
   companies: Company[];
   users: User[];
   participants: User[];

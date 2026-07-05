@@ -125,33 +125,27 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                 />
               ))}
             </Panel>
-            <Panel title="개인 자산 TOP5">
-              {state.participants.slice(0, 5).map((user) => (
-                <RankLine
-                  key={user.id}
-                  rank={user.personalRank ?? 0}
-                  name={user.realName}
-                  main={formatWon(user.totalAsset)}
-                  sub={`${user.companyName} · ${formatPercent(user.returnRate)}`}
-                />
-              ))}
+                        <Panel title="개인 자산 6-10위">
+              {state.personalRankingRevealed ? (
+                state.participants.slice(5, 10).map((user) => (
+                  <RankLine
+                    key={user.id}
+                    rank={user.personalRank ?? 0}
+                    name={user.realName}
+                    main={formatWon(user.totalAsset)}
+                    sub={user.companyName + " · " + formatPercent(user.returnRate)}
+                  />
+                ))
+              ) : (
+                <HiddenRanking />
+              )}
             </Panel>
           </section>
         </div>
 
-        <div className="mt-4 grid gap-4 lg:mt-5 lg:grid-cols-3 lg:gap-5">
-          <Feed icon={<Newspaper size={20} />} title="최신 뉴스" items={state.news.map((item) => `${item.title}: ${item.content}`)} />
+                <div className="mt-4 grid gap-4 lg:mt-5 lg:grid-cols-2 lg:gap-5">
+          <Feed icon={<Newspaper size={20} />} title="최신 뉴스" items={state.news.map((item) => item.title + ": " + item.content)} />
           <Feed icon={<Bell size={20} />} title="최신 공지" items={state.announcements.map((item) => item.content)} />
-          <section className="rounded-card bg-white/10 p-6">
-            <h2 className="text-xl font-bold">최근 투자 로그</h2>
-            <div className="mt-4 space-y-2">
-              {state.logs.slice(0, 5).map((log) => (
-                <p key={log.logId} className="rounded-button bg-white/10 px-3 py-2 text-sm">
-                  {log.userName} → {log.companyName} {formatWon(log.amount)}
-                </p>
-              ))}
-            </div>
-          </section>
         </div>
       </section>
     </main>
@@ -278,6 +272,23 @@ function CompanyAvatar({ logoUrl, color, name }: { logoUrl?: string; color?: str
       style={{ backgroundColor: color ?? "#0f172a" }}
     >
       {name.slice(0, 1)}
+    </div>
+  );
+}
+
+function HiddenRanking() {
+  return (
+    <div className="space-y-3">
+      {[6, 7, 8, 9, 10].map((rank) => (
+        <div key={rank} className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 rounded-button bg-slate-50 p-3 sm:grid-cols-[34px_minmax(0,1fr)_auto] sm:items-center">
+          <span className="self-center text-xl font-bold text-slate-300 sm:text-2xl">{rank}</span>
+          <div className="min-w-0">
+            <p className="h-5 w-28 rounded-full bg-slate-200" />
+            <p className="mt-2 h-3 w-40 rounded-full bg-slate-100" />
+          </div>
+          <span className="col-span-2 text-right text-sm font-bold text-slate-400 sm:col-span-1 sm:text-base">공개 대기</span>
+        </div>
+      ))}
     </div>
   );
 }
