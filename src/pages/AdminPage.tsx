@@ -149,6 +149,30 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
     );
   };
 
+  const adjustUserCash = (user: User, direction: "add" | "subtract") => {
+    if (!admin) return;
+    const label = direction === "add" ? "추가" : "차감";
+    const input = window.prompt(`${user.realName} 현금 ${label} 금액을 원 단위로 입력해주세요.`, "1000000");
+    if (input === null) return;
+
+    const amount = parseWonInputToUnit(input);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError("0보다 큰 금액을 입력해주세요.");
+      return;
+    }
+
+    const nextCash = direction === "add" ? user.cash + amount : user.cash - amount;
+    if (nextCash < 0) {
+      setError(`${user.realName}님의 현금보다 많이 차감할 수 없습니다.`);
+      return;
+    }
+
+    run(
+      () => api.updateUser(admin.id, user.id, { cash: nextCash }),
+      `${user.realName}님의 현금을 ${formatWon(amount)} ${label}할까요?`,
+    );
+  };
+
   const editCompany = (company: Company) => {
     const name = window.prompt("기업명", company.name);
     if (name === null) return;
@@ -355,7 +379,7 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
           <section className="rounded-card bg-white p-6 shadow-soft">
             <h2 className="font-bold">회원 관리</h2>
             <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[920px] text-left text-sm">
+              <table className="w-full min-w-[1120px] text-left text-sm">
                 <thead className="text-slate-500">
                   <tr>
                     <th>실명</th>
@@ -411,15 +435,29 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
                               ))}
                             </select>
                           </td>
-                          <td>{formatWon(user.cash)}</td>
+                          <td className="font-bold">{formatWon(user.cash)}</td>
                           <td className={user.evaluatedAmount - user.investedAmount >= 0 ? "text-red-500" : "text-blue-500"}>{formatSignedWon(user.evaluatedAmount - user.investedAmount)}</td>
                           <td className="font-bold">{formatWon(user.totalAsset)}</td>
                           <td>{formatPercent(user.returnRate)}</td>
                           <td>{user.isOnline ? "온라인" : "오프라인"}</td>
                           <td>
+                            <div className="flex flex-wrap gap-1.5">
+                              <button
+                                onClick={() => adjustUserCash(user, "add")}
+                                className="rounded-button border border-blue-200 bg-blue-50 px-3 py-2 font-bold text-blue-700"
+                              >
+                                +현금
+                              </button>
+                              <button
+                                onClick={() => adjustUserCash(user, "subtract")}
+                                className="rounded-button border border-red-200 bg-red-50 px-3 py-2 font-bold text-red-600"
+                              >
+                                -현금
+                              </button>
                             <button onClick={() => editUser(user)} className="rounded-button border border-slate-200 px-3 py-2 font-bold">
                               수정
                             </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -566,6 +604,13 @@ function parseSettlement(values: Record<string, string>) {
       .filter(([, value]) => value.trim() !== "")
       .map(([companyId, value]) => [companyId, Number(value)]),
   ) as Partial<Record<CompanyId, number>>;
+}
+
+function parseWonInputToUnit(value: string) {
+  const normalized = value.replace(/[^\d.-]/g, "");
+  const won = Number(normalized);
+  if (!Number.isFinite(won)) return Number.NaN;
+  return Math.round(won / 10_000);
 }
 
 function formatTimer(seconds: number) {
