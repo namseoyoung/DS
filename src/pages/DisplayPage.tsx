@@ -371,7 +371,6 @@ function BottomTicker({
       <InfoTicker
         icon={<Newspaper size={19} />}
         title="최신 뉴스"
-        imageUrl={news?.imageUrl}
         headline={news?.title ?? "새 뉴스가 없습니다"}
         body={news?.content ?? "뉴스가 발송되면 이곳에 표시됩니다."}
       />
@@ -390,13 +389,11 @@ function InfoTicker({
   title,
   headline,
   body,
-  imageUrl,
 }: {
   icon: ReactNode;
   title: string;
   headline: string;
   body: string;
-  imageUrl?: string;
 }) {
   return (
     <section className="rounded-[12px] border border-blue-300/35 bg-[#041127]/86 p-3 shadow-[0_0_24px_rgba(37,99,235,0.16)]">
@@ -405,13 +402,9 @@ function InfoTicker({
         {title}
       </h2>
       <div className="mt-2 flex items-center gap-3 rounded-[10px] border border-blue-300/16 bg-[#071832]/80 p-2">
-        {imageUrl ? (
-          <img src={imageUrl} alt="" className="h-11 w-20 shrink-0 rounded-[8px] object-cover" />
-        ) : (
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-600 text-lg font-black text-white">
-            i
-          </span>
-        )}
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-600 text-lg font-black text-white">
+          i
+        </span>
         <div className="min-w-0">
           <p className="truncate text-sm font-black text-white">{headline}</p>
           <p className="mt-0.5 truncate text-xs font-semibold text-blue-100/75">{body}</p>

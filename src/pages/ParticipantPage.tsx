@@ -827,15 +827,15 @@ function FeedSheet({
   onClose,
 }: {
   type: "news" | "announcements" | null;
-  news: { id: string; title: string; content: string; imageUrl?: string; createdAt: string }[];
+  news: { id: string; title: string; content: string; createdAt: string }[];
   announcements: { id: string; content: string; createdAt: string }[];
   onClose: () => void;
 }) {
   if (!type) return null;
 
   const isNews = type === "news";
-  const items: Array<{ id: string; title: string; body: string; imageUrl?: string; createdAt: string }> = isNews
-    ? news.map((item) => ({ id: item.id, title: item.title, body: item.content, imageUrl: item.imageUrl, createdAt: item.createdAt }))
+  const items: Array<{ id: string; title: string; body: string; createdAt: string }> = isNews
+    ? news.map((item) => ({ id: item.id, title: item.title, body: item.content, createdAt: item.createdAt }))
     : announcements.map((item) => ({ id: item.id, title: "공지", body: item.content, createdAt: item.createdAt }));
 
   return (
@@ -872,13 +872,6 @@ function FeedSheet({
                     {formatFeedTime(item.createdAt)}
                   </time>
                 </div>
-                {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt=""
-                    className="mt-3 max-h-56 w-full rounded-[18px] object-cover"
-                  />
-                ) : null}
                 <p className="mt-1 text-sm leading-5 text-slate-600">{item.body}</p>
               </article>
             ))

@@ -118,25 +118,10 @@ export const api = {
       method: "POST",
       body: adminBody(adminId),
     }),
-  uploadNewsImage: async (adminId: string, file: File) => {
-    const response = await fetch(`${apiUrl}/api/admin/news-image`, {
-      method: "POST",
-      headers: {
-        "Content-Type": file.type,
-        "X-Admin-Id": adminId,
-      },
-      body: file,
-    });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "이미지 업로드에 실패했습니다." }));
-      throw new Error(error.message);
-    }
-    return response.json() as Promise<{ imageUrl: string }>;
-  },
-  publishNews: (adminId: string, title: string, content: string, imageUrl?: string) =>
+  publishNews: (adminId: string, title: string, content: string) =>
     request<GameState>("/api/admin/news", {
       method: "POST",
-      body: adminBody(adminId, { title, content, imageUrl }),
+      body: adminBody(adminId, { title, content }),
     }),
   publishAnnouncement: (adminId: string, content: string) =>
     request<GameState>("/api/admin/announcements", {

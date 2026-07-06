@@ -139,7 +139,7 @@ export type Store = {
   settleRound(): Promise<void>;
   withdrawAllRoundInvestments(): Promise<void>;
   realtimeTick(): Promise<void>;
-  publishNews(title: string, content: string, imageUrl?: string): Promise<void>;
+  publishNews(title: string, content: string): Promise<void>;
   publishAnnouncement(content: string): Promise<void>;
   updateUser(
     userId: string,
@@ -937,13 +937,13 @@ class MemoryStore implements Store {
     this.session.updated_at = now();
   }
 
-  async publishNews(title: string, content: string, imageUrl?: string) {
+  async publishNews(title: string, content: string) {
     const cleanTitle = title.trim();
     const cleanContent = content.trim();
     if (!cleanTitle || !cleanContent) {
       throw new Error("뉴스 제목과 내용을 모두 입력해주세요.");
     }
-    this.news.unshift({ id: crypto.randomUUID(), title: cleanTitle, content: cleanContent, imageUrl, createdAt: now() });
+    this.news.unshift({ id: crypto.randomUUID(), title: cleanTitle, content: cleanContent, createdAt: now() });
     this.session.updated_at = now();
   }
 
@@ -1210,12 +1210,11 @@ class SupabaseStore extends MemoryStore {
       history as DbHistory[],
       logs as DbLog[],
       (yearlyResults ?? []) as DbYearlyResult[],
-      ((news ?? []) as Array<{ id: string; title: string; content: string; image_url?: string | null; created_at: string }>).map(
+      ((news ?? []) as Array<{ id: string; title: string; content: string; created_at: string }>).map(
         (item) => ({
           id: item.id,
           title: item.title,
           content: item.content,
-          imageUrl: item.image_url ?? undefined,
           createdAt: item.created_at,
         }),
       ),
@@ -1840,7 +1839,7 @@ class SupabaseStore extends MemoryStore {
     }
   }
 
-  async publishNews(title: string, content: string, imageUrl?: string) {
+  async publishNews(title: string, content: string) {
     const cleanTitle = title.trim();
     const cleanContent = content.trim();
     if (!cleanTitle || !cleanContent) {
@@ -1849,7 +1848,7 @@ class SupabaseStore extends MemoryStore {
 
     const { error } = await this.supabase
       .from("news")
-      .insert({ title: cleanTitle, content: cleanContent, image_url: imageUrl ?? null });
+      .insert({ title: cleanTitle, content: cleanContent });
     if (error) throw new Error(`뉴스 저장에 실패했습니다. ${error.message}`);
   }
 
