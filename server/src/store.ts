@@ -938,12 +938,21 @@ class MemoryStore implements Store {
   }
 
   async publishNews(title: string, content: string, imageUrl?: string) {
-    this.news.unshift({ id: crypto.randomUUID(), title, content, imageUrl, createdAt: now() });
+    const cleanTitle = title.trim();
+    const cleanContent = content.trim();
+    if (!cleanTitle || !cleanContent) {
+      throw new Error("뉴스 제목과 내용을 모두 입력해주세요.");
+    }
+    this.news.unshift({ id: crypto.randomUUID(), title: cleanTitle, content: cleanContent, imageUrl, createdAt: now() });
     this.session.updated_at = now();
   }
 
   async publishAnnouncement(content: string) {
-    this.announcements.unshift({ id: crypto.randomUUID(), content, createdAt: now() });
+    const cleanContent = content.trim();
+    if (!cleanContent) {
+      throw new Error("공지 내용을 입력해주세요.");
+    }
+    this.announcements.unshift({ id: crypto.randomUUID(), content: cleanContent, createdAt: now() });
     this.session.updated_at = now();
   }
 
@@ -1174,6 +1183,9 @@ class SupabaseStore extends MemoryStore {
       ["investments", investmentsResult],
       ["company_value_history", historyResult],
       ["transactions", logsResult],
+      ["user_yearly_results", yearlyResultsResult],
+      ["news", newsResult],
+      ["announcements", announcementsResult],
     ] as const;
     const failedRequired = requiredResults.find(([, result]) => result.error || !result.data);
     if (failedRequired) {
@@ -1830,11 +1842,26 @@ class SupabaseStore extends MemoryStore {
   }
 
   async publishNews(title: string, content: string, imageUrl?: string) {
-    await this.supabase.from("news").insert({ title, content, image_url: imageUrl ?? null });
+    const cleanTitle = title.trim();
+    const cleanContent = content.trim();
+    if (!cleanTitle || !cleanContent) {
+      throw new Error("뉴스 제목과 내용을 모두 입력해주세요.");
+    }
+
+    const { error } = await this.supabase
+      .from("news")
+      .insert({ title: cleanTitle, content: cleanContent, image_url: imageUrl ?? null });
+    if (error) throw new Error(`뉴스 저장에 실패했습니다. ${error.message}`);
   }
 
   async publishAnnouncement(content: string) {
-    await this.supabase.from("announcements").insert({ content });
+    const cleanContent = content.trim();
+    if (!cleanContent) {
+      throw new Error("공지 내용을 입력해주세요.");
+    }
+
+    const { error } = await this.supabase.from("announcements").insert({ content: cleanContent });
+    if (error) throw new Error(`공지 저장에 실패했습니다. ${error.message}`);
   }
 
   async updateUser(
