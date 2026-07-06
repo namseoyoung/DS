@@ -39,10 +39,20 @@ const hasActiveSessionForUser = (userId: string) =>
     (session) => session.userId === userId && session.sockets.size > 0,
   );
 
+const endParticipantSession = (userId: string) => {
+  const existingToken = participantSessionByUser.get(userId);
+  if (!existingToken) return;
+
+  activeSessionsByToken.delete(existingToken);
+  participantSessionByUser.delete(userId);
+  for (const socket of io.sockets.sockets.values()) {
+    if (socket.data.sessionToken === existingToken) socket.disconnect(true);
+  }
+};
+
 const createSession = (userId: string, role: "participant" | "admin") => {
   if (role === "participant") {
-    const existingToken = participantSessionByUser.get(userId);
-    if (existingToken) activeSessionsByToken.delete(existingToken);
+    endParticipantSession(userId);
   }
 
   const sessionToken = crypto.randomUUID();
@@ -116,8 +126,7 @@ app.post("/api/login", async (request, response, next) => {
     const existingToken = participantSessionByUser.get(user.id);
     const existingSession = existingToken ? activeSessionsByToken.get(existingToken) : undefined;
     if (user.role === "participant" && existingSession && (existingSession.sockets.size > 0 || Date.now() - existingSession.createdAt < LOGIN_GRACE_MS)) {
-      response.status(409).json({ message: "이미 다른 화면에서 로그인 중입니다. 먼저 로그아웃해 주세요." });
-      return;
+      endParticipantSession(user.id);
     }
 
     const sessionToken = createSession(user.id, user.role);
