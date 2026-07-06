@@ -109,11 +109,12 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
     setAdminId("");
   };
 
-  const run = async (action: () => Promise<GameState>, confirmText?: string) => {
+  const run = async (action: () => Promise<GameState>, confirmText?: string, onSuccess?: () => void) => {
     if (confirmText && !window.confirm(confirmText)) return;
     setError(null);
     try {
       setState(await action());
+      onSuccess?.();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "관리자 작업에 실패했습니다.");
     }
@@ -247,7 +248,7 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
             <Control icon={<RefreshCw size={16} />} label="연봉 지급" onClick={() => run(() => api.paySalary(admin.id))} />
             <Control icon={<Play size={16} />} label="투자 시작" onClick={() => run(() => api.setStatus(admin.id, "INVESTING", Number(duration)))} />
             <Control icon={<Clock size={16} />} label="투자 마감" onClick={() => run(() => api.setStatus(admin.id, "INVEST_CLOSED"))} />
-            <Control icon={<Trophy size={16} />} label="정산 확정" onClick={() => run(() => api.settle(admin.id, parseSettlement(settlement)), "정산을 확정할까요?")} />
+            <Control icon={<Trophy size={16} />} label="정산 확정" onClick={() => run(() => api.settle(admin.id, parseSettlement(settlement)), "정산을 확정할까요?", () => setSettlement({}))} />
             <Control icon={<RefreshCw size={16} />} label="전체 회수" onClick={() => run(() => api.withdrawAll(admin.id), "현재 연차 투자금을 모두 회수할까요?")} />
             <Control icon={<SkipBack size={16} />} label="이전 연차" onClick={() => run(() => api.retreatYear(admin.id), "이전 연차로 돌아갈까요?")} />
             <Control icon={<SkipForward size={16} />} label="다음 연차" onClick={() => run(() => api.advanceYear(admin.id), "다음 연차로 이동할까요?")} />
@@ -297,7 +298,12 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
             <input value={newsTitle} onChange={(event) => setNewsTitle(event.target.value)} className="mt-4 h-[52px] w-full rounded-button border border-slate-200 px-4" placeholder="뉴스 제목" />
             <textarea value={newsContent} onChange={(event) => setNewsContent(event.target.value)} className="mt-3 min-h-28 w-full rounded-button border border-slate-200 p-4" placeholder="뉴스 내용" />
             <button
-              onClick={() => run(() => api.publishNews(admin.id, newsTitle, newsContent))}
+              onClick={() =>
+                run(() => api.publishNews(admin.id, newsTitle, newsContent), undefined, () => {
+                  setNewsTitle("");
+                  setNewsContent("");
+                })
+              }
               className="mt-3 h-[52px] w-full rounded-button bg-blue-600 font-bold text-white"
             >
               뉴스 발송
@@ -315,7 +321,7 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
               ))}
             </div>
             <button
-              onClick={() => run(() => api.publishAnnouncement(admin.id, announcement))}
+              onClick={() => run(() => api.publishAnnouncement(admin.id, announcement), undefined, () => setAnnouncement(""))}
               className="mt-3 h-[52px] w-full rounded-button bg-blue-600 font-bold text-white"
             >
               공지 발송
