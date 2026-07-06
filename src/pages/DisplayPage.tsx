@@ -1,4 +1,4 @@
-import { Bell, Newspaper, Trophy } from "lucide-react";
+import { BarChart3, Clock3, Globe2, LockKeyhole, Megaphone, Trophy } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   CartesianGrid,
@@ -33,7 +33,11 @@ const statusLabel: Record<GameState["status"], string> = {
 
 export function DisplayPage({ state, connected }: DisplayPageProps) {
   if (!state) {
-    return <main className="grid min-h-screen place-items-center bg-slate-950 text-white">연결 중</main>;
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#f3efe7] text-slate-950">
+        서버에 연결 중입니다
+      </main>
+    );
   }
 
   if (state.status === "FINISHED") {
@@ -51,44 +55,64 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
     );
   }
 
-  const chartData = state.companies[0]?.history.map((point, index) => {
-    const row: Record<string, string | number> = { label: `${point.year}년차-${point.tick}` };
-    state.companies.forEach((company) => {
-      row[company.name] = company.history[index]?.value ?? company.currentValue;
-    });
-    return row;
-  });
+  const chartData = buildChartData(state);
+  const latestNews = state.news[0];
+  const latestAnnouncement = state.announcements[0];
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-slate-950 px-4 py-4 text-white sm:px-6 sm:py-5 lg:h-screen lg:overflow-hidden">
-      <section className="mx-auto max-w-7xl">
-        <div className="grid gap-4 lg:flex lg:items-end lg:justify-between">
+    <main className="min-h-screen overflow-x-hidden bg-[#f4efe6] px-5 py-5 text-[#18130b] lg:h-screen lg:overflow-hidden">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_5%,rgba(255,255,255,0.95),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.82),rgba(218,199,164,0.28)_45%,rgba(255,255,255,0.58))]" />
+      <div className="pointer-events-none fixed inset-0 opacity-60 [background-image:linear-gradient(120deg,transparent_0%,transparent_38%,rgba(255,255,255,0.55)_39%,transparent_40%,transparent_100%)]" />
+
+      <section className="relative mx-auto flex h-full max-w-[1540px] flex-col gap-4">
+        <header className="grid gap-4 lg:grid-cols-[1fr_590px] lg:items-end">
           <div>
-            <p className="text-xs font-semibold leading-5 text-slate-400 sm:text-sm">
+            <p className="text-sm font-black tracking-wide text-[#5f431b]">
               {connected ? "LIVE" : "RECONNECTING"} · {state.year}년차 · {statusLabel[state.status]}
-              {state.year === 4 ? ` · ${state.currentRound}/${state.maxRounds} 라운드` : ""}
             </p>
-            <h1 className="brand-shine mt-2 break-keep text-3xl font-bold leading-tight tracking-normal sm:text-5xl lg:text-6xl">인생여전</h1>
+            <h1 className="mt-1 text-[clamp(3rem,6vw,5.8rem)] font-black leading-none tracking-normal text-[#18130b] drop-shadow-sm">
+              인생여전 <span className="text-[#d6a641]">✦</span>
+            </h1>
+            <p className="mt-3 text-lg font-semibold text-[#2f281c]">
+              지금부터 미래를 바꾸는 투자가 시작됩니다.
+            </p>
           </div>
-          <div className="grid w-full grid-cols-2 gap-2 text-left sm:gap-3 sm:text-right lg:w-auto lg:min-w-[340px]">
+
+          <div className="grid grid-cols-2 gap-5">
             <DisplayStat
+              icon={<Clock3 size={52} />}
               label="남은 시간"
               value={formatTimer(state.remainingSeconds)}
               urgent={state.remainingSeconds > 0 && state.remainingSeconds <= 10}
             />
-            <DisplayStat label="접속" value={`${state.connectedCount}/${state.capacity}`} />
+            <DisplayStat
+              icon={<Trophy size={56} />}
+              label="접속 현황"
+              value={`${state.connectedCount} / ${state.capacity}`}
+            />
           </div>
-        </div>
+        </header>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-[1.55fr_0.85fr] lg:gap-5">
-          <section className="rounded-card bg-white p-4 text-slate-950 sm:p-5">
-            <h2 className="text-lg font-bold sm:text-xl">실시간 기업 가치 그래프</h2>
-            <div className="mt-3 h-[245px] sm:h-[285px] lg:h-[270px] xl:h-[290px]">
+        <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[1.45fr_0.72fr]">
+          <section className="min-h-0 rounded-[22px] border border-[#ddcfb9] bg-white/[0.88] p-7 shadow-[0_20px_60px_rgba(86,62,28,0.18)] backdrop-blur">
+            <h2 className="flex items-center gap-3 text-2xl font-black">
+              <span className="grid h-11 w-11 place-items-center rounded-full bg-[#fff4d8] text-[#d6a641]">
+                <BarChart3 size={26} />
+              </span>
+              실시간 기업 가치 추이
+            </h2>
+
+            <div className="mt-5 h-[300px] xl:h-[330px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid stroke="#e2e8f0" />
+                <LineChart data={chartData} margin={{ top: 12, right: 34, left: 10, bottom: 6 }}>
+                  <CartesianGrid stroke="#e8dfd1" strokeDasharray="4 4" />
                   <XAxis dataKey="label" hide />
-                  <YAxis domain={["dataMin - 500", "dataMax + 500"]} width={72} tickFormatter={(value) => formatValue(Number(value))} tick={{ fontSize: 10 }} />
+                  <YAxis
+                    domain={["dataMin - 500", "dataMax + 500"]}
+                    width={92}
+                    tickFormatter={(value) => formatValue(Number(value))}
+                    tick={{ fontSize: 12, fill: "#4b4236", fontWeight: 700 }}
+                  />
                   <Tooltip
                     formatter={(value) => formatValue(Number(value))}
                     labelFormatter={(label) => formatChartLabel(String(label))}
@@ -100,8 +124,8 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                       dataKey={company.name}
                       stroke={company.color}
                       strokeWidth={4}
-                      dot={false}
-                      activeDot={{ r: 5, strokeWidth: 0 }}
+                      dot={{ r: 3 }}
+                      activeDot={{ r: 7, strokeWidth: 0 }}
                       isAnimationActive
                       animationDuration={650}
                     />
@@ -109,32 +133,14 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                 </LineChart>
               </ResponsiveContainer>
             </div>
+
             <CompanyTopFive companies={state.companies.slice(0, 5)} />
           </section>
 
-          <section className="grid gap-4">
-            <Panel title="개인 자산 6-10위">
-              {state.personalRankingRevealed ? (
-                state.participants.slice(5, 10).map((user) => (
-                  <RankLine
-                    key={user.id}
-                    rank={user.personalRank ?? 0}
-                    name={user.realName}
-                    main={formatWon(user.totalAsset)}
-                    sub={user.companyName + " · " + formatPercent(user.returnRate)}
-                  />
-                ))
-              ) : (
-                <HiddenRanking />
-              )}
-            </Panel>
-          </section>
+          <RankingBoard state={state} />
         </div>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:gap-5">
-          <NewsFeed icon={<Newspaper size={20} />} title="최신 뉴스" items={state.news} />
-          <Feed icon={<Bell size={20} />} title="최신 공지" items={state.announcements.map((item) => item.content)} />
-        </div>
+        <BottomTicker news={latestNews} announcement={latestAnnouncement?.content} />
       </section>
     </main>
   );
@@ -164,7 +170,10 @@ function Ending({ state, connected }: { state: GameState; connected: boolean }) 
             <div className="mt-6 grid grid-cols-3 gap-3">
               <Info label="최종 가치" value={topCompany ? formatValue(topCompany.currentValue) : "-"} />
               <Info label="총 투자금" value={topCompany ? formatWon(topCompany.totalInvestment) : "-"} />
-              <Info label="소속 평균 자산" value={topCompany ? formatWon(topCompany.memberAverageAsset) : "-"} />
+              <Info
+                label="소속 평균 자산"
+                value={topCompany ? formatWon(topCompany.memberAverageAsset) : "-"}
+              />
             </div>
             <p className="mt-6 text-sm font-semibold text-slate-500">소속 회원</p>
             <p className="mt-2 text-xl font-bold">
@@ -187,80 +196,179 @@ function Ending({ state, connected }: { state: GameState; connected: boolean }) 
   );
 }
 
+function buildChartData(state: GameState) {
+  const maxLength = Math.max(1, ...state.companies.map((company) => company.history.length));
+
+  return Array.from({ length: maxLength }, (_, index) => {
+    const firstPoint = state.companies.find((company) => company.history[index])?.history[index];
+    const row: Record<string, string | number> = {
+      label: firstPoint ? `${firstPoint.year}년차-${firstPoint.tick}` : `${state.year}년차-${index}`,
+    };
+
+    state.companies.forEach((company) => {
+      row[company.name] = company.history[index]?.value ?? company.currentValue;
+    });
+
+    return row;
+  });
+}
+
 function formatTimer(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const rest = seconds % 60;
   return `${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
 }
 
-function DisplayStat({ label, value, urgent }: { label: string; value: string; urgent?: boolean }) {
+function DisplayStat({
+  icon,
+  label,
+  value,
+  urgent,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  urgent?: boolean;
+}) {
   return (
-    <div className={`min-w-0 rounded-[18px] px-3 py-3 sm:rounded-card sm:px-5 sm:py-4 ${urgent ? "bg-red-600" : "bg-white/10"}`}>
-      <p className={`whitespace-nowrap text-[11px] font-semibold leading-none sm:text-sm ${urgent ? "text-red-100" : "text-slate-300"}`}>{label}</p>
-      <p className="mt-2 whitespace-nowrap font-mono text-[clamp(1.35rem,7vw,2rem)] font-bold leading-none tracking-normal sm:text-3xl">{value}</p>
-    </div>
-  );
-}
-
-function Panel({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="rounded-card bg-white p-4 text-slate-950 sm:p-5">
-      <h2 className="text-lg font-bold sm:text-xl">{title}</h2>
-      <div className="mt-3 space-y-2">{children}</div>
+    <section
+      className={`flex min-w-0 items-center gap-5 rounded-[18px] border px-7 py-5 shadow-[0_18px_45px_rgba(86,62,28,0.16)] ${
+        urgent ? "border-red-300 bg-red-600 text-white" : "border-[#dfcfb8] bg-white/72 text-[#18130b]"
+      }`}
+    >
+      <div
+        className={`grid h-16 w-16 shrink-0 place-items-center rounded-full border ${
+          urgent ? "border-white/50 bg-white/15" : "border-[#d6a641] bg-[#fff8e9] text-[#c99526]"
+        }`}
+      >
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="whitespace-nowrap text-sm font-black opacity-75">{label}</p>
+        <p className="mt-1 whitespace-nowrap font-mono text-4xl font-black leading-none tracking-normal">
+          {value}
+        </p>
+      </div>
     </section>
   );
 }
 
-
 function CompanyTopFive({ companies }: { companies: GameState["companies"] }) {
   return (
-    <section className="mt-4 border-t border-slate-100 pt-4">
-      <h3 className="text-base font-bold sm:text-lg">기업 TOP5</h3>
-      <div className="mt-3 grid grid-cols-5 gap-2">
+    <section className="mt-5">
+      <h3 className="text-2xl font-black">기업 TOP5</h3>
+      <div className="mt-4 grid grid-cols-5 gap-4">
         {companies.map((company) => (
-          <div key={company.id} className="min-w-0 rounded-button bg-slate-50 px-2 py-3 text-center">
-            <p className="text-sm font-black text-slate-400">{company.rank}</p>
+          <article
+            key={company.id}
+            className="min-w-0 rounded-[14px] border border-[#d7bf80] bg-gradient-to-br from-white via-[#fffaf0] to-[#efe5d4] p-4 text-center shadow-[0_10px_28px_rgba(88,62,20,0.14)]"
+          >
+            <p className="text-left text-2xl font-black text-[#c99526]">{company.rank}</p>
             <div className="mt-1 flex justify-center">
               <CompanyAvatar logoUrl={company.logoUrl} color={company.color} name={company.name} compact />
             </div>
-            <p className="mt-2 truncate text-sm font-bold">{company.name}</p>
-            <p className="mt-1 truncate text-sm font-black sm:text-base">{formatValue(company.currentValue)}</p>
-          </div>
+            <p className="mt-3 truncate text-lg font-black">{company.name}</p>
+            <p className="mt-2 truncate text-xl font-black">{formatValue(company.currentValue)}</p>
+            <p className={`mt-2 text-sm font-black ${company.changeRate >= 0 ? "text-red-600" : "text-blue-700"}`}>
+              {formatPercent(company.changeRate)}
+            </p>
+          </article>
         ))}
       </div>
     </section>
   );
 }
 
-function RankLine({
-  rank,
-  name,
-  main,
-  sub,
-  logoUrl,
-  avatarColor,
+function RankingBoard({ state }: { state: GameState }) {
+  return (
+    <aside className="rounded-[22px] border border-[#b99752] bg-[#171512] p-7 text-[#f9e2a3] shadow-[0_20px_55px_rgba(42,27,5,0.35)] [background-image:radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.08),transparent_28%),linear-gradient(135deg,#23211d,#12110f)]">
+      <div className="flex items-center justify-between border-b border-[#d6a641]/25 pb-5">
+        <h2 className="text-2xl font-black">개인 자산 6-10위</h2>
+        <span className="rounded-full border border-[#b99752] bg-[#4b381c] px-5 py-2 text-sm font-black">
+          {state.personalRankingRevealed ? "공개 중" : "공개 전"}
+        </span>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {state.personalRankingRevealed
+          ? state.participants.slice(5, 10).map((user) => (
+              <div
+                key={user.id}
+                className="grid grid-cols-[52px_1fr_auto] items-center gap-4 rounded-[14px] border border-white/10 bg-black/20 px-5 py-4 text-white"
+              >
+                <span className="font-serif text-3xl text-[#f9e2a3]">{user.personalRank}</span>
+                <div className="min-w-0">
+                  <p className="truncate text-xl font-black">{user.realName}</p>
+                  <p className="truncate text-sm font-bold text-[#cdb77a]">{user.companyName}</p>
+                </div>
+                <span className="text-xl font-black">{formatWon(user.totalAsset)}</span>
+              </div>
+            ))
+          : [6, 7, 8, 9, 10].map((rank) => (
+              <div
+                key={rank}
+                className="grid grid-cols-[52px_54px_1fr_auto] items-center gap-4 rounded-[14px] border border-white/10 bg-black/20 px-5 py-4 text-white"
+              >
+                <span className="font-serif text-3xl text-[#f9e2a3]">{rank}</span>
+                <span className="grid h-12 w-12 place-items-center rounded-full border border-[#b99752] text-[#f9e2a3]">
+                  <LockKeyhole size={22} />
+                </span>
+                <span className="text-xl font-black">공개 대기</span>
+                <span className="text-xl font-black text-[#f9e2a3]">-</span>
+              </div>
+            ))}
+      </div>
+
+      <div className="mt-5 rounded-[14px] border border-[#b99752] p-5 text-center">
+        <p className="text-xl font-black">순위는 추후 공개됩니다.</p>
+        <p className="mt-2 text-sm font-bold text-[#e5c875]">모두의 투자가 종료될 때까지 기대해주세요!</p>
+      </div>
+    </aside>
+  );
+}
+
+function BottomTicker({
+  news,
+  announcement,
 }: {
-  rank: number;
-  name: string;
-  main: string;
-  sub?: string;
-  logoUrl?: string;
-  avatarColor?: string;
+  news?: GameState["news"][number];
+  announcement?: string;
 }) {
   return (
-    <div className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 rounded-button bg-slate-50 p-3 sm:grid-cols-[34px_minmax(0,1fr)_auto] sm:items-center">
-      <span className="self-center text-xl font-bold text-slate-400 sm:text-2xl">{rank}</span>
-      <div className="flex min-w-0 items-center gap-3">
-        {logoUrl || avatarColor ? (
-          <CompanyAvatar logoUrl={logoUrl} color={avatarColor} name={name} />
-        ) : null}
+    <footer className="grid gap-4 rounded-[18px] border border-[#b99752] bg-[#171512] px-7 py-4 text-white shadow-[0_16px_40px_rgba(42,27,5,0.3)] lg:grid-cols-[1fr_1fr]">
+      <section className="flex min-w-0 items-center gap-4 border-[#b99752]/40 lg:border-r lg:pr-6">
+        {news?.imageUrl ? (
+          <img src={news.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover ring-1 ring-[#b99752]" />
+        ) : (
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#b99752] text-[#f9e2a3]">
+            <Globe2 size={25} />
+          </span>
+        )}
         <div className="min-w-0">
-          <p className="truncate text-base font-bold sm:text-lg">{name}</p>
-          {sub ? <p className="truncate text-xs text-slate-500 sm:text-sm">{sub}</p> : null}
+          <p className="flex items-center gap-2 text-xl font-black text-[#f9e2a3]">
+            최신 뉴스 <span className="rounded bg-[#b99752] px-2 py-0.5 text-xs text-white">LIVE</span>
+          </p>
+          <p className="mt-1 truncate text-base font-semibold text-white/80">
+            {news ? `${news.title} · ${news.content}` : "새 뉴스가 없습니다."}
+          </p>
         </div>
-      </div>
-      <span className="col-span-2 text-right text-lg font-bold sm:col-span-1 sm:text-xl">{main}</span>
-    </div>
+      </section>
+
+      <section className="flex min-w-0 items-center gap-4">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#b99752] text-[#f9e2a3]">
+          <Megaphone size={25} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-xl font-black text-[#f9e2a3]">최신 공지</p>
+          <p className="mt-1 truncate text-base font-semibold text-white/80">
+            {announcement ?? "표시할 공지가 없습니다."}
+          </p>
+        </div>
+        <time className="ml-auto hidden shrink-0 text-lg font-bold text-[#f9e2a3] xl:block">
+          {new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+        </time>
+      </section>
+    </footer>
   );
 }
 
@@ -275,14 +383,14 @@ function CompanyAvatar({
   name: string;
   compact?: boolean;
 }) {
-  const sizeClass = compact ? "h-8 w-8 sm:h-9 sm:w-9" : "h-10 w-10 sm:h-11 sm:w-11";
+  const sizeClass = compact ? "h-14 w-14" : "h-10 w-10 sm:h-11 sm:w-11";
 
   if (logoUrl) {
     return (
       <img
         src={logoUrl}
         alt=""
-        className={`${sizeClass} shrink-0 rounded-full object-cover ring-1 ring-slate-200`}
+        className={`${sizeClass} shrink-0 rounded-full object-cover ring-1 ring-[#d8c49b]`}
       />
     );
   }
@@ -297,90 +405,8 @@ function CompanyAvatar({
   );
 }
 
-function HiddenRanking() {
-  return (
-    <div className="space-y-3">
-      {[6, 7, 8, 9, 10].map((rank) => (
-        <div key={rank} className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 rounded-button bg-slate-50 p-3 sm:grid-cols-[34px_minmax(0,1fr)_auto] sm:items-center">
-          <span className="self-center text-xl font-bold text-slate-300 sm:text-2xl">{rank}</span>
-          <div className="min-w-0">
-            <p className="h-5 w-28 rounded-full bg-slate-200" />
-            <p className="mt-2 h-3 w-40 rounded-full bg-slate-100" />
-          </div>
-          <span className="col-span-2 text-right text-sm font-bold text-slate-400 sm:col-span-1 sm:text-base">공개 대기</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Feed({
-  icon,
-  title,
-  items,
-}: {
-  icon: ReactNode;
-  title: string;
-  items: string[];
-}) {
-  return (
-    <section className="rounded-card bg-white/10 p-4 sm:p-5">
-      <h2 className="flex items-center gap-2 text-base font-bold sm:text-lg">
-        {icon}
-        {title}
-      </h2>
-      <div className="mt-3 space-y-2">
-        {items.length === 0 ? (
-          <p className="text-slate-300">표시할 내용이 없습니다.</p>
-        ) : (
-          items.slice(0, 3).map((item) => (
-            <p key={item} className="truncate rounded-button bg-white/10 px-3 py-1.5 text-xs sm:text-sm">
-              {item}
-            </p>
-          ))
-        )}
-      </div>
-    </section>
-  );
-}
-
-function NewsFeed({
-  icon,
-  title,
-  items,
-}: {
-  icon: ReactNode;
-  title: string;
-  items: GameState["news"];
-}) {
-  return (
-    <section className="rounded-card bg-white/10 p-4 sm:p-5">
-      <h2 className="flex items-center gap-2 text-base font-bold sm:text-lg">
-        {icon}
-        {title}
-      </h2>
-      <div className="mt-3 space-y-2">
-        {items.length === 0 ? (
-          <p className="text-slate-300">표시할 내용이 없습니다.</p>
-        ) : (
-          items.slice(0, 3).map((item) => (
-            <article key={item.id} className="overflow-hidden rounded-button bg-white/10">
-              {item.imageUrl ? (
-                <img src={item.imageUrl} alt="" className="h-24 w-full object-cover" />
-              ) : null}
-              <p className="truncate px-3 py-1.5 text-xs sm:text-sm">
-                {item.title}: {item.content}
-              </p>
-            </article>
-          ))
-        )}
-      </div>
-    </section>
-  );
-}
-
 function formatChartLabel(label: string) {
-  const match = label.match(/^(\d+).+-(\d+)$/);
+  const match = label.match(/^(\d+)년차-(\d+)$/);
   if (!match) return "가치 변동";
   return `${match[1]}년차 ${Number(match[2]) + 1}번째 변동`;
 }
