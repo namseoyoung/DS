@@ -250,6 +250,14 @@ app.post("/api/admin/advance-round", async (request, response, next) => {
   }
 });
 
+app.post("/api/admin/start-round", async (request, response, next) => {
+  try {
+    await runAdminAction(request, response, () => store.startRound(Number(request.body.round)));
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/admin/settle-round", async (request, response, next) => {
   try {
     await runAdminAction(request, response, () => store.settleRound());

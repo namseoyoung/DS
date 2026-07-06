@@ -135,6 +135,7 @@ export type Store = {
   settleYear(changes: Partial<Record<CompanyId, number>>): Promise<void>;
   advanceYear(): Promise<void>;
   retreatYear(): Promise<void>;
+  startRound(round: number): Promise<void>;
   advanceRound(): Promise<void>;
   settleRound(): Promise<void>;
   withdrawAllRoundInvestments(): Promise<void>;
@@ -157,7 +158,7 @@ const getRemainingSeconds = (timerEndsAt: string | null) => {
   return Math.max(0, Math.ceil((Date.parse(timerEndsAt) - Date.now()) / 1000));
 };
 
-const MAX_ROUNDS = 10;
+const MAX_ROUNDS = 4;
 
 const isTimedPlayStatus = (status: GameStatus) =>
   status === "INVESTING" ||
@@ -806,6 +807,36 @@ class MemoryStore implements Store {
     }
     this.session.year = Math.max(1, this.session.year - 1);
     await this.setStatus("YEAR_ENDED");
+  }
+
+  async startRound(round: number) {
+    const nextRound = Math.min(MAX_ROUNDS, Math.max(1, Math.floor(Number(round) || 1)));
+    this.session.year = 4;
+    this.session.current_round = nextRound;
+    this.session.max_rounds = MAX_ROUNDS;
+    this.session.previous_status = this.session.status;
+    this.session.status = "ROUND_INVESTING";
+    this.session.timer_ends_at = null;
+    this.session.paused_remaining_seconds = null;
+    this.session.updated_at = now();
+
+    const createdAt = now();
+    for (const company of this.companies) {
+      const hasYearOpeningPoint = this.history.some(
+        (point) => point.company_id === company.id && point.year === 4 && point.tick === 0,
+      );
+      if (!hasYearOpeningPoint) {
+        this.history.push({
+          company_id: company.id,
+          tick: 0,
+          year: 4,
+          value: company.current_value,
+          change_rate: 0,
+          created_at: createdAt,
+          recorded_at: createdAt,
+        });
+      }
+    }
   }
 
   async advanceRound() {
@@ -1639,6 +1670,41 @@ class SupabaseStore extends MemoryStore {
         updated_at: now(),
       })
       .eq("id", DEFAULT_SESSION_ID);
+  }
+
+  async startRound(round: number) {
+    const state = await this.getState();
+    const nextRound = Math.min(MAX_ROUNDS, Math.max(1, Math.floor(Number(round) || 1)));
+    await this.supabase
+      .from("game_status")
+      .update({
+        year: 4,
+        current_round: nextRound,
+        max_rounds: MAX_ROUNDS,
+        previous_status: state.status,
+        status: "ROUND_INVESTING",
+        timer_ends_at: null,
+        paused_remaining_seconds: null,
+        updated_at: now(),
+      })
+      .eq("id", DEFAULT_SESSION_ID);
+
+    const createdAt = now();
+    for (const company of state.companies) {
+      const hasYearOpeningPoint = company.history.some(
+        (point) => point.year === 4 && point.tick === 0,
+      );
+      if (!hasYearOpeningPoint) {
+        await this.supabase.from("company_value_history").insert({
+          company_id: company.id,
+          tick: 0,
+          year: 4,
+          value: company.currentValue,
+          change_rate: 0,
+          recorded_at: createdAt,
+        });
+      }
+    }
   }
 
   async advanceRound() {

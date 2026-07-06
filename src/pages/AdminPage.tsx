@@ -221,8 +221,6 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
     return <main className="grid min-h-screen place-items-center bg-slate-50">불러오는 중</main>;
   }
 
-  const nextRoundNumber = Math.min(state.currentRound + 1, state.maxRounds);
-
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
@@ -276,14 +274,14 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
             <Control icon={<RefreshCw size={16} />} label="전체 회수" onClick={() => run(() => api.withdrawAll(admin.id), "현재 연차 투자금을 모두 회수할까요?")} />
             <Control icon={<SkipBack size={16} />} label="이전 연차" onClick={() => run(() => api.retreatYear(admin.id), "이전 연차로 돌아갈까요?")} />
             <Control icon={<SkipForward size={16} />} label="다음 연차" onClick={() => run(() => api.advanceYear(admin.id), "다음 연차로 이동할까요?")} />
-            <Control
-              icon={<Play size={16} />}
-              label={`4년차 ${nextRoundNumber}라운드 시작`}
-              onClick={() => run(() => api.advanceRound(admin.id), `4년차 ${nextRoundNumber}라운드를 시작할까요?`)}
-            />
-            <Control icon={<Trophy size={16} />} label="4년차 정산" onClick={() => run(() => api.settleRound(admin.id), "이번 라운드를 정산할까요?")} />
-            <Control icon={<RefreshCw size={16} />} label="4년차 전체회수" onClick={() => run(() => api.withdrawAll(admin.id), "이번 라운드 투자금을 모두 회수할까요?")} />
-            <Control icon={<RefreshCw size={16} />} label="라운드 결과 수동 갱신" onClick={() => run(() => api.realtimeTick(admin.id))} />
+            {[1, 2, 3, 4].map((round) => (
+              <Control
+                key={round}
+                icon={<Play size={16} />}
+                label={`4년차 ${round}라운드 시작`}
+                onClick={() => run(() => api.startRound(admin.id, round), `4년차 ${round}라운드를 시작할까요?`)}
+              />
+            ))}
             <Control icon={<Pause size={16} />} label="일시정지" onClick={() => run(() => api.setStatus(admin.id, "PAUSED"))} />
             <Control icon={<Play size={16} />} label="재개" onClick={() => run(() => api.setStatus(admin.id, state.previousStatus ?? "INVESTING"))} />
             <Control
