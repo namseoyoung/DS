@@ -69,57 +69,57 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
   const latestAnnouncement = state.announcements[0];
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-[#020712] px-5 py-5 text-white lg:h-screen lg:overflow-hidden">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_8%,rgba(39,132,255,0.35),transparent_28%),radial-gradient(circle_at_80%_18%,rgba(91,78,255,0.24),transparent_24%),linear-gradient(180deg,#040915,#01040c)]" />
-      <div className="pointer-events-none fixed inset-x-0 top-0 h-[240px] opacity-70 [background-image:linear-gradient(90deg,transparent_0%,rgba(58,146,255,0.26)_50%,transparent_100%),radial-gradient(circle_at_55%_36%,rgba(93,171,255,0.65),transparent_4%)]" />
-      <div className="pointer-events-none fixed inset-0 opacity-[0.16] [background-image:linear-gradient(rgba(70,143,255,0.28)_1px,transparent_1px),linear-gradient(90deg,rgba(70,143,255,0.28)_1px,transparent_1px)] [background-size:72px_72px]" />
+    <main className="relative h-screen overflow-hidden bg-[#020712] px-4 py-3 text-white">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_49%_5%,rgba(58,126,255,0.34),transparent_25%),radial-gradient(circle_at_77%_13%,rgba(80,71,255,0.2),transparent_20%),linear-gradient(180deg,#050a18,#01040c)]" />
+      <div className="pointer-events-none fixed inset-x-0 top-0 h-[185px] opacity-70 [background-image:linear-gradient(90deg,transparent_0%,rgba(58,146,255,0.26)_50%,transparent_100%),radial-gradient(circle_at_56%_32%,rgba(116,176,255,0.62),transparent_5%)]" />
+      <div className="pointer-events-none fixed inset-0 opacity-[0.14] [background-image:linear-gradient(rgba(70,143,255,0.28)_1px,transparent_1px),linear-gradient(90deg,rgba(70,143,255,0.28)_1px,transparent_1px)] [background-size:64px_64px]" />
 
-      <section className="relative mx-auto flex h-full max-w-[1580px] flex-col gap-4">
-        <header className="grid gap-4 lg:grid-cols-[1fr_470px] lg:items-end">
+      <section className="relative mx-auto flex h-full max-w-[1120px] flex-col gap-2.5">
+        <header className="grid shrink-0 grid-cols-[1fr_320px] items-end gap-4">
           <div className="relative min-w-0">
-            <div className="pointer-events-none absolute left-[340px] top-0 hidden h-36 w-[580px] rounded-full bg-[radial-gradient(circle,rgba(48,140,255,0.36),transparent_58%)] blur-sm lg:block" />
-            <p className="flex items-center gap-2 text-lg font-black tracking-wide text-[#38bdf8]">
-              <span className="h-4 w-4 rounded-full bg-blue-500 shadow-[0_0_18px_rgba(59,130,246,0.95)]" />
+            <div className="pointer-events-none absolute left-[255px] top-0 hidden h-24 w-[420px] rounded-full bg-[radial-gradient(circle,rgba(48,140,255,0.34),transparent_58%)] blur-sm lg:block" />
+            <p className="flex items-center gap-1.5 text-[13px] font-black tracking-wide text-[#38bdf8]">
+              <span className="h-3 w-3 rounded-full bg-blue-500 shadow-[0_0_16px_rgba(59,130,246,0.95)]" />
               {connected ? "LIVE" : "RECONNECTING"} · {state.year}년차 · {statusLabel[state.status]}
             </p>
-            <h1 className="brand-shine mt-1 text-[clamp(4.5rem,7.2vw,7rem)] font-black leading-none tracking-normal text-white drop-shadow-[0_0_26px_rgba(96,165,250,0.42)]">
+            <h1 className="brand-shine mt-0.5 text-[64px] font-black leading-none tracking-normal text-white drop-shadow-[0_0_24px_rgba(96,165,250,0.42)]">
               인생여전
             </h1>
-            <p className="mt-2 text-xl font-semibold text-blue-200">
+            <p className="mt-1 text-sm font-semibold text-blue-200">
               기업 가치로 경쟁하는 실시간 투자 시뮬레이션
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-2 gap-3">
             <DisplayStat
-              icon={<Clock3 size={30} />}
+              icon={<Clock3 size={18} />}
               label="남은 시간"
               value={formatTimer(state.remainingSeconds)}
               urgent={state.remainingSeconds > 0 && state.remainingSeconds <= 10}
             />
             <DisplayStat
-              icon={<UserRound size={30} />}
+              icon={<UserRound size={18} />}
               label="접속"
               value={`${state.connectedCount}/${state.capacity}`}
             />
           </div>
         </header>
 
-        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[1.38fr_0.62fr]">
-          <section className="min-h-0 rounded-[20px] border border-blue-400/55 bg-[#041127]/82 p-5 shadow-[0_0_38px_rgba(37,99,235,0.24)] backdrop-blur">
-            <h2 className="flex items-center gap-3 text-2xl font-black">
-              <span className="grid h-11 w-11 place-items-center rounded-full bg-blue-500/15 text-blue-300 shadow-[0_0_20px_rgba(59,130,246,0.35)]">
-                <Activity size={27} />
+        <div className="grid min-h-0 flex-1 grid-cols-[1.42fr_0.58fr] gap-2.5">
+          <section className="min-h-0 rounded-[14px] border border-blue-400/45 bg-[#041127]/82 p-3.5 shadow-[0_0_30px_rgba(37,99,235,0.2)] backdrop-blur">
+            <h2 className="flex items-center gap-2 text-lg font-black">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-500/15 text-blue-300 shadow-[0_0_18px_rgba(59,130,246,0.35)]">
+                <Activity size={21} />
               </span>
               실시간 기업 가치 그래프
             </h2>
 
-            <div className="mt-3 h-[312px] xl:h-[336px]">
+            <div className="mt-2 h-[224px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 14, right: 24, left: 14, bottom: 8 }}>
+                <LineChart data={chartData} margin={{ top: 8, right: 16, left: 6, bottom: 4 }}>
                   <defs>
                     <filter id="displayGlow" x="-60%" y="-60%" width="220%" height="220%">
-                      <feGaussianBlur stdDeviation="3.5" result="coloredBlur" />
+                      <feGaussianBlur stdDeviation="3" result="coloredBlur" />
                       <feMerge>
                         <feMergeNode in="coloredBlur" />
                         <feMergeNode in="SourceGraphic" />
@@ -130,9 +130,9 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                   <XAxis dataKey="label" hide />
                   <YAxis
                     domain={["dataMin - 500", "dataMax + 500"]}
-                    width={98}
+                    width={76}
                     tickFormatter={(value) => formatValue(Number(value))}
-                    tick={{ fontSize: 12, fill: "#dbeafe", fontWeight: 700 }}
+                    tick={{ fontSize: 9, fill: "#dbeafe", fontWeight: 700 }}
                     axisLine={{ stroke: "#5b8fe8" }}
                     tickLine={{ stroke: "#5b8fe8" }}
                   />
@@ -142,9 +142,9 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                     contentStyle={{
                       background: "rgba(5, 14, 34, 0.94)",
                       border: "1px solid rgba(96,165,250,0.55)",
-                      borderRadius: 14,
+                      borderRadius: 12,
                       color: "#fff",
-                      boxShadow: "0 0 28px rgba(37,99,235,0.35)",
+                      boxShadow: "0 0 24px rgba(37,99,235,0.35)",
                     }}
                   />
                   {state.companies.map((company) => (
@@ -153,9 +153,9 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                       type="monotone"
                       dataKey={company.name}
                       stroke={company.color}
-                      strokeWidth={4}
+                      strokeWidth={3.2}
                       dot={false}
-                      activeDot={{ r: 8, strokeWidth: 0 }}
+                      activeDot={{ r: 7, strokeWidth: 0 }}
                       filter="url(#displayGlow)"
                       isAnimationActive
                       animationDuration={650}
@@ -263,17 +263,17 @@ function DisplayStat({
 }) {
   return (
     <section
-      className={`rounded-[20px] border px-7 py-5 shadow-[0_0_32px_rgba(37,99,235,0.18)] backdrop-blur ${
+      className={`rounded-[14px] border px-4 py-3 shadow-[0_0_24px_rgba(37,99,235,0.18)] backdrop-blur ${
         urgent
           ? "border-red-300/80 bg-red-600/35 text-white"
           : "border-blue-300/50 bg-[#06152f]/82 text-white"
       }`}
     >
-      <p className="flex items-center gap-3 text-lg font-black text-blue-100">
+      <p className="flex items-center gap-2 text-[13px] font-black text-blue-100">
         <span className={urgent ? "text-red-100" : "text-blue-300"}>{icon}</span>
         {label}
       </p>
-      <p className="mt-4 whitespace-nowrap font-mono text-[clamp(2.8rem,4.2vw,4.3rem)] font-black leading-none tracking-normal text-white drop-shadow-[0_0_18px_rgba(96,165,250,0.45)]">
+      <p className="mt-2 whitespace-nowrap font-mono text-[36px] font-black leading-none tracking-normal text-white drop-shadow-[0_0_18px_rgba(96,165,250,0.45)]">
         {value}
       </p>
     </section>
@@ -282,26 +282,26 @@ function DisplayStat({
 
 function CompanyTopFive({ companies }: { companies: GameState["companies"] }) {
   return (
-    <section className="mt-4 border-t border-blue-300/18 pt-3">
-      <h3 className="flex items-center gap-2 text-2xl font-black">
+    <section className="mt-3 border-t border-blue-300/18 pt-2.5">
+      <h3 className="flex items-center gap-1.5 text-lg font-black">
         <span className="text-blue-400">★</span>
         기업 TOP5
       </h3>
-      <div className="mt-3 grid grid-cols-5 gap-4">
+      <div className="mt-2.5 grid grid-cols-5 gap-3">
         {companies.map((company) => (
           <article
             key={company.id}
-            className="relative min-w-0 overflow-hidden rounded-[14px] border border-blue-300/50 bg-[#06152f]/88 p-4 text-center shadow-[inset_0_0_24px_rgba(59,130,246,0.12),0_0_24px_rgba(37,99,235,0.18)]"
+            className="relative min-w-0 overflow-hidden rounded-[10px] border border-blue-300/50 bg-[#06152f]/88 px-3 py-3 text-center shadow-[inset_0_0_20px_rgba(59,130,246,0.1),0_0_20px_rgba(37,99,235,0.16)]"
           >
-            <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: company.color }} />
-            <span className="absolute left-1/2 top-2 grid h-8 w-8 -translate-x-1/2 place-items-center rounded-full bg-blue-600 text-lg font-black shadow-[0_0_18px_rgba(59,130,246,0.8)]">
+            <div className="absolute inset-x-0 top-0 h-0.5" style={{ backgroundColor: company.color }} />
+            <span className="absolute left-1/2 top-1.5 grid h-6 w-6 -translate-x-1/2 place-items-center rounded-full bg-blue-600 text-sm font-black shadow-[0_0_16px_rgba(59,130,246,0.8)]">
               {company.rank}
             </span>
-            <div className="mt-10 flex justify-center">
+            <div className="mt-8 flex justify-center">
               <CompanyAvatar logoUrl={company.logoUrl} color={company.color} name={company.name} compact />
             </div>
-            <p className="mt-3 truncate text-lg font-black">{company.name}</p>
-            <p className="mt-2 truncate text-xl font-black" style={{ color: company.color }}>
+            <p className="mt-2 truncate text-sm font-black">{company.name}</p>
+            <p className="mt-1 truncate text-[15px] font-black" style={{ color: company.color }}>
               {formatValue(company.currentValue)}
             </p>
           </article>
@@ -313,43 +313,43 @@ function CompanyTopFive({ companies }: { companies: GameState["companies"] }) {
 
 function RankingBoard({ state }: { state: GameState }) {
   return (
-    <aside className="rounded-[20px] border border-blue-300/50 bg-[#041127]/82 p-5 shadow-[0_0_38px_rgba(37,99,235,0.24)] backdrop-blur">
-      <div className="flex items-center justify-between border-b border-blue-300/22 pb-4">
-        <h2 className="flex items-center gap-3 text-2xl font-black">
-          <Crown className="text-blue-300" size={31} />
+    <aside className="rounded-[14px] border border-blue-300/50 bg-[#041127]/82 p-3.5 shadow-[0_0_30px_rgba(37,99,235,0.2)] backdrop-blur">
+      <div className="flex items-center justify-between border-b border-blue-300/22 pb-3">
+        <h2 className="flex items-center gap-2 text-lg font-black">
+          <Crown className="text-blue-300" size={22} />
           개인 자산 6-10위
         </h2>
-        <span className="rounded-full border border-blue-300/35 bg-blue-500/12 px-4 py-2 text-sm font-black text-blue-100">
+        <span className="rounded-full border border-blue-300/35 bg-blue-500/12 px-3 py-1 text-[11px] font-black text-blue-100">
           {state.personalRankingRevealed ? "공개 중" : "공개 전"}
         </span>
       </div>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-3 space-y-2">
         {state.personalRankingRevealed
           ? state.participants.slice(5, 10).map((user) => (
               <div
                 key={user.id}
-                className="grid grid-cols-[54px_1fr_auto] items-center gap-4 rounded-[14px] border border-blue-300/20 bg-[#071832]/82 px-5 py-4 shadow-[inset_0_0_18px_rgba(59,130,246,0.08)]"
+                className="grid grid-cols-[38px_1fr_auto] items-center gap-3 rounded-[10px] border border-blue-300/20 bg-[#071832]/82 px-3 py-3 shadow-[inset_0_0_16px_rgba(59,130,246,0.08)]"
               >
-                <span className="font-mono text-3xl font-black text-blue-300">{user.personalRank}</span>
+                <span className="font-mono text-2xl font-black text-blue-300">{user.personalRank}</span>
                 <div className="min-w-0">
-                  <p className="truncate text-xl font-black text-white">{user.realName}</p>
-                  <p className="truncate text-sm font-bold text-blue-200/75">{user.companyName}</p>
+                  <p className="truncate text-sm font-black text-white">{user.realName}</p>
+                  <p className="truncate text-[11px] font-bold text-blue-200/75">{user.companyName}</p>
                 </div>
-                <span className="text-lg font-black text-white">{formatWon(user.totalAsset)}</span>
+                <span className="text-xs font-black text-white">{formatWon(user.totalAsset)}</span>
               </div>
             ))
           : [6, 7, 8, 9, 10].map((rank) => (
               <div
                 key={rank}
-                className="grid grid-cols-[54px_1fr_auto] items-center gap-4 rounded-[14px] border border-blue-300/20 bg-[#071832]/82 px-5 py-4 shadow-[inset_0_0_18px_rgba(59,130,246,0.08)]"
+                className="grid grid-cols-[38px_1fr_auto] items-center gap-3 rounded-[10px] border border-blue-300/20 bg-[#071832]/82 px-3 py-3 shadow-[inset_0_0_16px_rgba(59,130,246,0.08)]"
               >
-                <span className="font-mono text-3xl font-black text-blue-300">{rank}</span>
-                <span className="h-8 w-32 rounded-full bg-blue-300/10" />
-                <span className="flex items-center gap-4 text-base font-bold text-blue-100">
+                <span className="font-mono text-2xl font-black text-blue-300">{rank}</span>
+                <span className="h-5 w-20 rounded-full bg-blue-300/10" />
+                <span className="flex items-center gap-3 text-xs font-bold text-blue-100">
                   공개 대기
-                  <span className="grid h-11 w-11 place-items-center rounded-full border border-blue-300/20 bg-blue-950/60 text-blue-300">
-                    <LockKeyhole size={22} />
+                  <span className="grid h-8 w-8 place-items-center rounded-full border border-blue-300/20 bg-blue-950/60 text-blue-300">
+                    <LockKeyhole size={16} />
                   </span>
                 </span>
               </div>
@@ -367,16 +367,16 @@ function BottomTicker({
   announcement?: string;
 }) {
   return (
-    <footer className="grid gap-4 lg:grid-cols-2">
+    <footer className="grid shrink-0 gap-2.5 lg:grid-cols-2">
       <InfoTicker
-        icon={<Newspaper size={26} />}
+        icon={<Newspaper size={19} />}
         title="최신 뉴스"
         imageUrl={news?.imageUrl}
         headline={news?.title ?? "새 뉴스가 없습니다"}
         body={news?.content ?? "뉴스가 발송되면 이곳에 표시됩니다."}
       />
       <InfoTicker
-        icon={<Bell size={26} />}
+        icon={<Bell size={19} />}
         title="최신 공지"
         headline={latestAnnouncementTitle(announcement)}
         body={announcement ?? "표시할 내용이 없습니다."}
@@ -399,22 +399,22 @@ function InfoTicker({
   imageUrl?: string;
 }) {
   return (
-    <section className="rounded-[18px] border border-blue-300/35 bg-[#041127]/86 p-4 shadow-[0_0_28px_rgba(37,99,235,0.18)]">
-      <h2 className="flex items-center gap-3 text-2xl font-black">
+    <section className="rounded-[12px] border border-blue-300/35 bg-[#041127]/86 p-3 shadow-[0_0_24px_rgba(37,99,235,0.16)]">
+      <h2 className="flex items-center gap-2 text-lg font-black">
         <span className="text-blue-300">{icon}</span>
         {title}
       </h2>
-      <div className="mt-3 flex items-center gap-4 rounded-[14px] border border-blue-300/16 bg-[#071832]/80 p-3">
+      <div className="mt-2 flex items-center gap-3 rounded-[10px] border border-blue-300/16 bg-[#071832]/80 p-2">
         {imageUrl ? (
-          <img src={imageUrl} alt="" className="h-16 w-28 shrink-0 rounded-[10px] object-cover" />
+          <img src={imageUrl} alt="" className="h-11 w-20 shrink-0 rounded-[8px] object-cover" />
         ) : (
-          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-blue-600 text-2xl font-black text-white">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-600 text-lg font-black text-white">
             i
           </span>
         )}
         <div className="min-w-0">
-          <p className="truncate text-lg font-black text-white">{headline}</p>
-          <p className="mt-1 truncate text-sm font-semibold text-blue-100/75">{body}</p>
+          <p className="truncate text-sm font-black text-white">{headline}</p>
+          <p className="mt-0.5 truncate text-xs font-semibold text-blue-100/75">{body}</p>
         </div>
       </div>
     </section>
@@ -437,7 +437,7 @@ function CompanyAvatar({
   name: string;
   compact?: boolean;
 }) {
-  const sizeClass = compact ? "h-14 w-14" : "h-10 w-10 sm:h-11 sm:w-11";
+  const sizeClass = compact ? "h-9 w-9" : "h-10 w-10 sm:h-11 sm:w-11";
 
   if (logoUrl) {
     return (
