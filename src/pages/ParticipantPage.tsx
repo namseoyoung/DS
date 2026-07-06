@@ -1,4 +1,4 @@
-import { Bell, LogIn, Newspaper, X } from "lucide-react";
+import { Bell, LogIn, Newspaper, PauseCircle, PlayCircle, StopCircle, X } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -208,7 +208,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
 
   const isRoundResult = state.status === "ROUND_RESULT";
   const showCountdown = (canInvest || isRoundResult) && state.remainingSeconds > 0;
-  const isLastTenSeconds = showCountdown && state.remainingSeconds <= 10;
+  const isFinalThirtySeconds = showCountdown && state.remainingSeconds <= 30;
   const activeHoldings = user.holdings.filter((holding) => holding.investedAmount > 0);
   const myYearlyResults = state.yearlyResults.filter((result) => result.userId === user.id);
   const myLogs = state.logs.filter((log) => log.userId === user.id);
@@ -251,24 +251,17 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
         onLogout={handleLogout}
       />
 
-      <section className="mx-auto max-w-md space-y-5 px-5 pb-8 pt-5">
-        <section className="rounded-card border border-slate-200 bg-white p-6 shadow-soft">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="font-bold">{message.title}</h2>
-              <p className="mt-1 text-sm text-slate-500">{message.body}</p>
-              {state.year === 4 ? (
-                <p className="mt-2 text-xs font-bold text-slate-400">
-                  {state.currentRound}/{state.maxRounds} 라운드
-                </p>
-              ) : null}
-            </div>
-            <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-              {state.status}
-            </span>
-          </div>
-        </section>
-
+      <section className="mx-auto max-w-md space-y-5 px-5 pb-8 pt-3">
+        <InvestmentStatusBar
+          status={state.status}
+          message={message}
+          canInvest={canInvest}
+          isRoundResult={isRoundResult}
+          showCountdown={showCountdown}
+          isUrgent={isFinalThirtySeconds}
+          remainingSeconds={state.remainingSeconds}
+          roundLabel={state.year === 4 ? `${state.currentRound}/${state.maxRounds} 라운드` : undefined}
+        />
         <section className="grid grid-cols-2 gap-3">
           <FeedShortcut
             icon={<Bell size={16} aria-hidden />}
@@ -287,36 +280,6 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
         </section>
 
         <PersonalProfitFlow results={myYearlyResults} logs={myLogs} holdings={activeHoldings} currentYear={state.year} currentCash={user.cash} />
-
-        {showCountdown ? (
-          <section
-            className={`rounded-card p-6 shadow-soft ${
-              isLastTenSeconds ? "bg-red-600 text-white" : "bg-white text-slate-950"
-            }`}
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p
-                  className={`text-sm font-semibold ${
-                    isLastTenSeconds ? "text-red-100" : "text-slate-500"
-                  }`}
-                >
-                  {isRoundResult ? "다음 라운드까지" : "투자 가능 시간"}
-                </p>
-                <p className="mt-1 text-sm font-medium">
-                  {isRoundResult
-                    ? "결과 공개 후 자동 전액 회수됩니다"
-                    : isLastTenSeconds
-                      ? "곧 마감됩니다"
-                      : "시간 안에 투자를 완료해주세요"}
-                </p>
-              </div>
-              <strong className="text-4xl font-bold tracking-normal">
-                {formatTimer(state.remainingSeconds)}
-              </strong>
-            </div>
-          </section>
-        ) : null}
 
         <section className="rounded-card border border-slate-200 bg-white p-6 shadow-soft">
           <div className="flex items-center justify-between">
@@ -818,6 +781,112 @@ function FeedShortcut({
       <p className="mt-2 text-xs font-bold text-blue-600">전체보기</p>
     </button>
   );
+}
+
+function InvestmentStatusBar({
+  status,
+  message,
+  canInvest,
+  isRoundResult,
+  showCountdown,
+  isUrgent,
+  remainingSeconds,
+  roundLabel,
+}: {
+  status: GameState["status"];
+  message: { title: string; body: string };
+  canInvest: boolean;
+  isRoundResult: boolean;
+  showCountdown: boolean;
+  isUrgent: boolean;
+  remainingSeconds: number;
+  roundLabel?: string;
+}) {
+  const isPaused = status === "PAUSED";
+  const isClosed = status === "INVEST_CLOSED" || status === "FINISHED";
+  const statusView = getInvestmentStatusView(status, canInvest, isRoundResult);
+  const Icon = statusView.icon;
+
+  return (
+    <section className="sticky top-2 z-30 rounded-[22px] border border-slate-200 bg-white/95 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.16)] backdrop-blur">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${statusView.iconClass}`}>
+            <Icon size={24} aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className={`text-sm font-black ${statusView.textClass}`}>{statusView.label}</p>
+            <h2 className="mt-0.5 truncate text-base font-black text-slate-950">{message.title}</h2>
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-[11px] font-black text-slate-400">
+            {isRoundResult ? "다음 라운드" : canInvest ? "투자 가능 시간" : isPaused ? "일시정지" : "남은 시간"}
+          </p>
+          <p
+            className={`mt-0.5 font-mono text-3xl font-black leading-none tracking-normal ${
+              isUrgent ? "text-red-600" : canInvest || showCountdown ? "text-slate-950" : "text-slate-400"
+            }`}
+          >
+            {showCountdown ? formatTimer(remainingSeconds) : "00:00"}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-start justify-between gap-3 border-t border-slate-100 pt-3">
+        <p className="min-w-0 text-xs font-semibold leading-5 text-slate-500">{message.body}</p>
+        <span
+          className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-black ${
+            canInvest
+              ? "bg-emerald-50 text-emerald-700"
+              : isPaused
+                ? "bg-amber-50 text-amber-700"
+                : isClosed
+                  ? "bg-red-50 text-red-600"
+                  : "bg-slate-100 text-slate-500"
+          }`}
+        >
+          {roundLabel ?? status}
+        </span>
+      </div>
+    </section>
+  );
+}
+
+function getInvestmentStatusView(status: GameState["status"], canInvest: boolean, isRoundResult: boolean) {
+  if (status === "PAUSED") {
+    return {
+      label: "⏸ 일시정지",
+      icon: PauseCircle,
+      iconClass: "bg-amber-100 text-amber-600",
+      textClass: "text-amber-600",
+    };
+  }
+
+  if (canInvest) {
+    return {
+      label: "▶ 투자 가능",
+      icon: PlayCircle,
+      iconClass: "bg-emerald-100 text-emerald-600",
+      textClass: "text-emerald-600",
+    };
+  }
+
+  if (isRoundResult) {
+    return {
+      label: "⏱ 결과 공개",
+      icon: PauseCircle,
+      iconClass: "bg-blue-100 text-blue-600",
+      textClass: "text-blue-600",
+    };
+  }
+
+  return {
+    label: "■ 투자 불가",
+    icon: StopCircle,
+    iconClass: "bg-slate-100 text-slate-500",
+    textClass: "text-slate-500",
+  };
 }
 
 function FeedSheet({
