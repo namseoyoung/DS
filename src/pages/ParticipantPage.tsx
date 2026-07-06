@@ -91,6 +91,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [profileCompany, setProfileCompany] = useState<Company | null>(null);
   const [dismissedAnnouncementId, setDismissedAnnouncementId] = useState<string | null>(null);
+  const [dismissedNewsId, setDismissedNewsId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [feedSheet, setFeedSheet] = useState<"news" | "announcements" | null>(null);
@@ -217,24 +218,47 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   const latestAnnouncement = state.announcements[0];
   const showAnnouncementToast =
     latestAnnouncement && latestAnnouncement.id !== dismissedAnnouncementId;
+  const showNewsToast = latestNews && latestNews.id !== dismissedNewsId;
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
-      {showAnnouncementToast ? (
-        <section className="fixed left-3 right-3 top-3 z-40 mx-auto max-w-md rounded-card bg-blue-600 p-6 text-white shadow-2xl">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-bold text-blue-200">공지</p>
-              <p className="mt-1 text-sm font-semibold leading-5">{latestAnnouncement.content}</p>
+      {showAnnouncementToast || showNewsToast ? (
+        <section className="fixed left-3 right-3 top-3 z-40 mx-auto flex max-w-md flex-col gap-2">
+          {showNewsToast ? (
+            <div className="rounded-card border border-yellow-200 bg-yellow-300 p-5 text-yellow-950 shadow-2xl">
+              <div className="flex items-start justify-between gap-3">
+                <button type="button" onClick={() => setFeedSheet("news")} className="min-w-0 flex-1 text-left">
+                  <p className="text-xs font-bold text-yellow-700">뉴스</p>
+                  <p className="mt-1 truncate text-sm font-bold">{latestNews.title}</p>
+                  <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5">{latestNews.content}</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDismissedNewsId(latestNews.id)}
+                  className="shrink-0 rounded-full bg-yellow-950/10 px-3 py-1 text-xs font-bold text-yellow-950"
+                >
+                  닫기
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setDismissedAnnouncementId(latestAnnouncement.id)}
-              className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold"
-            >
-              닫기
-            </button>
-          </div>
+          ) : null}
+          {showAnnouncementToast ? (
+            <div className="rounded-card bg-blue-600 p-5 text-white shadow-2xl">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold text-blue-200">공지</p>
+                  <p className="mt-1 text-sm font-semibold leading-5">{latestAnnouncement.content}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDismissedAnnouncementId(latestAnnouncement.id)}
+                  className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs font-bold"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
