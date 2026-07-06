@@ -1183,7 +1183,6 @@ class SupabaseStore extends MemoryStore {
       ["investments", investmentsResult],
       ["company_value_history", historyResult],
       ["transactions", logsResult],
-      ["user_yearly_results", yearlyResultsResult],
       ["news", newsResult],
       ["announcements", announcementsResult],
     ] as const;
