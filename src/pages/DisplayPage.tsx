@@ -132,7 +132,7 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
         </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:gap-5">
-          <Feed icon={<Newspaper size={20} />} title="최신 뉴스" items={state.news.map((item) => item.title + ": " + item.content)} />
+          <NewsFeed icon={<Newspaper size={20} />} title="최신 뉴스" items={state.news} />
           <Feed icon={<Bell size={20} />} title="최신 공지" items={state.announcements.map((item) => item.content)} />
         </div>
       </section>
@@ -337,6 +337,41 @@ function Feed({
             <p key={item} className="truncate rounded-button bg-white/10 px-3 py-1.5 text-xs sm:text-sm">
               {item}
             </p>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function NewsFeed({
+  icon,
+  title,
+  items,
+}: {
+  icon: ReactNode;
+  title: string;
+  items: GameState["news"];
+}) {
+  return (
+    <section className="rounded-card bg-white/10 p-4 sm:p-5">
+      <h2 className="flex items-center gap-2 text-base font-bold sm:text-lg">
+        {icon}
+        {title}
+      </h2>
+      <div className="mt-3 space-y-2">
+        {items.length === 0 ? (
+          <p className="text-slate-300">표시할 내용이 없습니다.</p>
+        ) : (
+          items.slice(0, 3).map((item) => (
+            <article key={item.id} className="overflow-hidden rounded-button bg-white/10">
+              {item.imageUrl ? (
+                <img src={item.imageUrl} alt="" className="h-24 w-full object-cover" />
+              ) : null}
+              <p className="truncate px-3 py-1.5 text-xs sm:text-sm">
+                {item.title}: {item.content}
+              </p>
+            </article>
           ))
         )}
       </div>

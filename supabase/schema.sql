@@ -97,11 +97,14 @@ create table if not exists public.news (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   content text not null,
+  image_url text,
   company_id text references public.companies(id) on delete set null,
   year integer check (year between 1 and 4),
   is_published boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+alter table public.news add column if not exists image_url text;
 
 create table if not exists public.announcements (
   id uuid primary key default gen_random_uuid(),

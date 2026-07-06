@@ -54,6 +54,8 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
   const [password, setPassword] = useState("");
   const [newsTitle, setNewsTitle] = useState("");
   const [newsContent, setNewsContent] = useState("");
+  const [newsImageFile, setNewsImageFile] = useState<File | null>(null);
+  const [newsImageInputKey, setNewsImageInputKey] = useState(0);
   const [announcement, setAnnouncement] = useState("");
   const [duration, setDuration] = useState("600");
   const [settlement, setSettlement] = useState<Record<string, string>>({});
@@ -118,6 +120,11 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "관리자 작업에 실패했습니다.");
     }
+  };
+
+  const publishNewsWithImage = async () => {
+    const uploaded = newsImageFile ? await api.uploadNewsImage(admin!.id, newsImageFile) : undefined;
+    return api.publishNews(admin!.id, newsTitle, newsContent, uploaded?.imageUrl);
   };
 
   const updateUserField = (
@@ -297,11 +304,26 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
             <h2 className="flex items-center gap-2 font-bold"><Newspaper size={18} />뉴스 발송</h2>
             <input value={newsTitle} onChange={(event) => setNewsTitle(event.target.value)} className="mt-4 h-[52px] w-full rounded-button border border-slate-200 px-4" placeholder="뉴스 제목" />
             <textarea value={newsContent} onChange={(event) => setNewsContent(event.target.value)} className="mt-3 min-h-28 w-full rounded-button border border-slate-200 p-4" placeholder="뉴스 내용" />
+            <label className="mt-3 block rounded-button border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
+              뉴스 이미지 선택
+              <input
+                key={newsImageInputKey}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(event) => setNewsImageFile(event.target.files?.[0] ?? null)}
+                className="sr-only"
+              />
+              <span className="mt-1 block truncate text-xs font-semibold text-slate-400">
+                {newsImageFile ? newsImageFile.name : "PNG, JPG, WEBP · 최대 5MB"}
+              </span>
+            </label>
             <button
               onClick={() =>
-                run(() => api.publishNews(admin.id, newsTitle, newsContent), undefined, () => {
+                run(publishNewsWithImage, undefined, () => {
                   setNewsTitle("");
                   setNewsContent("");
+                  setNewsImageFile(null);
+                  setNewsImageInputKey((current) => current + 1);
                 })
               }
               className="mt-3 h-[52px] w-full rounded-button bg-blue-600 font-bold text-white"

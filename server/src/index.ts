@@ -1,4 +1,5 @@
 import cors from "cors";
+import { createClient } from "@supabase/supabase-js";
 import "dotenv/config";
 import express from "express";
 import { createServer } from "node:http";
@@ -9,6 +10,10 @@ import { createStore } from "./store";
 
 const port = Number(process.env.PORT ?? 4000);
 const clientOrigin = process.env.CLIENT_ORIGIN ?? "*";
+const newsImageBucket = process.env.SUPABASE_NEWS_IMAGE_BUCKET ?? "news-images";
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const storageClient = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 const app = express();
 const httpServer = createServer(app);
@@ -101,6 +106,21 @@ const runAdminAction = async (
   await requireAdmin(request.body.adminId);
   await action();
   response.json(await broadcastState());
+};
+
+const ensureNewsImageBucket = async () => {
+  if (!storageClient) throw new Error("Supabase Storage 설정이 필요합니다.");
+  const { error } = await storageClient.storage.getBucket(newsImageBucket);
+  if (!error) return;
+
+  const { error: createError } = await storageClient.storage.createBucket(newsImageBucket, {
+    public: true,
+    fileSizeLimit: 5 * 1024 * 1024,
+    allowedMimeTypes: ["image/png", "image/jpeg", "image/webp"],
+  });
+  if (createError && !createError.message.toLowerCase().includes("already exists")) {
+    throw createError;
+  }
 };
 
 app.get("/health", (_request, response) => response.json({ ok: true }));
@@ -282,10 +302,54 @@ app.post("/api/admin/realtime-tick", async (request, response, next) => {
   }
 });
 
+app.post(
+  "/api/admin/news-image",
+  express.raw({ type: ["image/png", "image/jpeg", "image/webp"], limit: "5mb" }),
+  async (request, response, next) => {
+    try {
+      await requireAdmin(request.headers["x-admin-id"]);
+      if (!storageClient) throw new Error("Supabase Storage 설정이 필요합니다.");
+      if (!Buffer.isBuffer(request.body) || request.body.length === 0) {
+        response.status(400).json({ message: "업로드할 이미지 파일을 선택해 주세요." });
+        return;
+      }
+
+      const contentType = String(request.headers["content-type"] ?? "");
+      const extensionByType: Record<string, string> = {
+        "image/png": "png",
+        "image/jpeg": "jpg",
+        "image/webp": "webp",
+      };
+      const extension = extensionByType[contentType];
+      if (!extension) {
+        response.status(400).json({ message: "PNG, JPG, WEBP 이미지만 업로드할 수 있습니다." });
+        return;
+      }
+
+      await ensureNewsImageBucket();
+      const path = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${extension}`;
+      const { error } = await storageClient.storage.from(newsImageBucket).upload(path, request.body, {
+        contentType,
+        upsert: false,
+      });
+      if (error) throw error;
+
+      const { data } = storageClient.storage.from(newsImageBucket).getPublicUrl(path);
+      response.json({ imageUrl: data.publicUrl });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
 app.post("/api/admin/news", async (request, response, next) => {
   try {
     await runAdminAction(request, response, () =>
-      store.publishNews(String(request.body.title ?? ""), String(request.body.content ?? "")),
+      store.publishNews(
+        String(request.body.title ?? ""),
+        String(request.body.content ?? ""),
+        request.body.imageUrl ? String(request.body.imageUrl) : undefined,
+      ),
     );
   } catch (error) {
     next(error);
