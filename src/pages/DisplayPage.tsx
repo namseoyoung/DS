@@ -106,9 +106,9 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
         </header>
 
         <div className="grid min-h-0 flex-1 grid-cols-[1.42fr_0.58fr] gap-2.5">
-          <section className="min-h-0 rounded-[14px] border border-blue-400/45 bg-[#041127]/82 p-3.5 shadow-[0_0_30px_rgba(37,99,235,0.2)] backdrop-blur">
+          <section className="min-h-0 rounded-[14px] border border-slate-200 bg-white p-3.5 text-slate-950 shadow-[0_18px_50px_rgba(15,23,42,0.18)]">
             <h2 className="flex items-center gap-2 text-lg font-black">
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-500/15 text-blue-300 shadow-[0_0_18px_rgba(59,130,246,0.35)]">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-50 text-blue-600">
                 <Activity size={21} />
               </span>
               실시간 기업 가치 그래프
@@ -126,25 +126,25 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
                       </feMerge>
                     </filter>
                   </defs>
-                  <CartesianGrid stroke="#12345f" strokeDasharray="4 4" />
+                  <CartesianGrid stroke="#dbe3ef" strokeDasharray="4 4" />
                   <XAxis dataKey="label" hide />
                   <YAxis
                     domain={["dataMin - 500", "dataMax + 500"]}
                     width={76}
                     tickFormatter={(value) => formatValue(Number(value))}
-                    tick={{ fontSize: 9, fill: "#dbeafe", fontWeight: 700 }}
-                    axisLine={{ stroke: "#5b8fe8" }}
-                    tickLine={{ stroke: "#5b8fe8" }}
+                    tick={{ fontSize: 9, fill: "#475569", fontWeight: 700 }}
+                    axisLine={{ stroke: "#94a3b8" }}
+                    tickLine={{ stroke: "#94a3b8" }}
                   />
                   <Tooltip
                     formatter={(value) => formatValue(Number(value))}
                     labelFormatter={(label) => formatChartLabel(String(label))}
                     contentStyle={{
-                      background: "rgba(5, 14, 34, 0.94)",
-                      border: "1px solid rgba(96,165,250,0.55)",
+                      background: "rgba(255, 255, 255, 0.96)",
+                      border: "1px solid rgba(148,163,184,0.55)",
                       borderRadius: 12,
-                      color: "#fff",
-                      boxShadow: "0 0 24px rgba(37,99,235,0.35)",
+                      color: "#0f172a",
+                      boxShadow: "0 14px 34px rgba(15,23,42,0.14)",
                     }}
                   />
                   {state.companies.map((company) => (
@@ -282,19 +282,19 @@ function DisplayStat({
 
 function CompanyTopFive({ companies }: { companies: GameState["companies"] }) {
   return (
-    <section className="mt-3 border-t border-blue-300/18 pt-2.5">
+    <section className="mt-3 border-t border-slate-200 pt-2.5">
       <h3 className="flex items-center gap-1.5 text-lg font-black">
-        <span className="text-blue-400">★</span>
+        <span className="text-blue-600">★</span>
         기업 TOP5
       </h3>
       <div className="mt-2.5 grid grid-cols-5 gap-3">
         {companies.map((company) => (
           <article
             key={company.id}
-            className="relative min-w-0 overflow-hidden rounded-[10px] border border-blue-300/50 bg-[#06152f]/88 px-3 py-3 text-center shadow-[inset_0_0_20px_rgba(59,130,246,0.1),0_0_20px_rgba(37,99,235,0.16)]"
+            className="relative min-w-0 overflow-hidden rounded-[10px] border border-slate-200 bg-slate-50 px-3 py-3 text-center shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
           >
             <div className="absolute inset-x-0 top-0 h-0.5" style={{ backgroundColor: company.color }} />
-            <span className="absolute left-1/2 top-1.5 grid h-6 w-6 -translate-x-1/2 place-items-center rounded-full bg-blue-600 text-sm font-black shadow-[0_0_16px_rgba(59,130,246,0.8)]">
+            <span className="absolute left-1/2 top-1.5 grid h-6 w-6 -translate-x-1/2 place-items-center rounded-full bg-blue-600 text-sm font-black text-white shadow-[0_8px_18px_rgba(37,99,235,0.28)]">
               {company.rank}
             </span>
             <div className="mt-8 flex justify-center">
