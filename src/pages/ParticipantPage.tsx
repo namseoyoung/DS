@@ -268,8 +268,8 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
           remainingSeconds={state.remainingSeconds}
           roundLabel={
             state.year === 4
-              ? `4년차 ${state.currentRound}/${state.maxRounds}라운드`
-              : `${state.year}년차 진행 중`
+              ? `4년차 ${state.currentRound}라운드`
+              : `${state.year}년차`
           }
         />
         <FeedAlertStack
