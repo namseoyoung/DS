@@ -258,28 +258,30 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
       />
 
       <section className="mx-auto max-w-md space-y-5 px-5 pb-8 pt-3">
-        <InvestmentStatusBar
-          status={state.status}
-          message={message}
-          canInvest={canInvest}
-          isRoundResult={isRoundResult}
-          showCountdown={showCountdown}
-          isUrgent={isFinalThirtySeconds}
-          remainingSeconds={state.remainingSeconds}
-          roundLabel={
-            state.year === 4
-              ? `4년차 ${state.currentRound}라운드`
-              : `${state.year}년차`
-          }
-        />
-        <FeedAlertStack
-          latestNews={latestNews}
-          latestAnnouncement={latestAnnouncement}
-          unreadNewsCount={unreadNews.length}
-          unreadAnnouncementCount={unreadAnnouncements.length}
-          onOpen={openFeed}
-          onMarkRead={markFeedRead}
-        />
+        <div className="sticky top-2 z-30 space-y-2">
+          <InvestmentStatusBar
+            status={state.status}
+            message={message}
+            canInvest={canInvest}
+            isRoundResult={isRoundResult}
+            showCountdown={showCountdown}
+            isUrgent={isFinalThirtySeconds}
+            remainingSeconds={state.remainingSeconds}
+            roundLabel={
+              state.year === 4
+                ? `4년차 ${state.currentRound}라운드`
+                : `${state.year}년차`
+            }
+          />
+          <FeedAlertStack
+            latestNews={latestNews}
+            latestAnnouncement={latestAnnouncement}
+            unreadNewsCount={unreadNews.length}
+            unreadAnnouncementCount={unreadAnnouncements.length}
+            onOpen={openFeed}
+            onMarkRead={markFeedRead}
+          />
+        </div>
         <section className="grid grid-cols-2 gap-3">
           <FeedShortcut
             icon={<Bell size={16} aria-hidden />}
@@ -817,30 +819,53 @@ function FeedAlertStack({
   onMarkRead: (type: "news" | "announcements") => void;
 }) {
   if (unreadNewsCount === 0 && unreadAnnouncementCount === 0) return null;
+  type FeedAlertItem = {
+    type: "news" | "announcements";
+    tone: "blue" | "gray";
+    label: string;
+    title: string;
+    body?: string;
+    count: number;
+    createdAt: string;
+  };
+  const alerts: FeedAlertItem[] = [];
+  if (latestAnnouncement && unreadAnnouncementCount > 0) {
+    alerts.push({
+      type: "announcements",
+      tone: "blue",
+      label: "공지",
+      title: latestAnnouncement.content,
+      count: unreadAnnouncementCount,
+      createdAt: latestAnnouncement.createdAt,
+    });
+  }
+  if (latestNews && unreadNewsCount > 0) {
+    alerts.push({
+      type: "news",
+      tone: "gray",
+      label: "뉴스",
+      title: latestNews.title,
+      body: latestNews.content,
+      count: unreadNewsCount,
+      createdAt: latestNews.createdAt,
+    });
+  }
+  alerts.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 
   return (
     <section className="space-y-2">
-      {unreadAnnouncementCount > 0 && latestAnnouncement ? (
+      {alerts.map((alert) => (
         <FeedAlert
-          tone="blue"
-          label="공지"
-          title={latestAnnouncement.content}
-          count={unreadAnnouncementCount}
-          onOpen={() => onOpen("announcements")}
-          onMarkRead={() => onMarkRead("announcements")}
+          key={alert.type}
+          tone={alert.tone}
+          label={alert.label}
+          title={alert.title}
+          body={alert.body}
+          count={alert.count}
+          onOpen={() => onOpen(alert.type)}
+          onMarkRead={() => onMarkRead(alert.type)}
         />
-      ) : null}
-      {unreadNewsCount > 0 && latestNews ? (
-        <FeedAlert
-          tone="gray"
-          label="뉴스"
-          title={latestNews.title}
-          body={latestNews.content}
-          count={unreadNewsCount}
-          onOpen={() => onOpen("news")}
-          onMarkRead={() => onMarkRead("news")}
-        />
-      ) : null}
+      ))}
     </section>
   );
 }
@@ -935,7 +960,7 @@ function InvestmentStatusBar({
   const Icon = statusView.icon;
 
   return (
-    <section className="sticky top-2 z-30 rounded-[22px] border border-slate-200 bg-white/95 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.16)] backdrop-blur">
+    <section className="rounded-[22px] border border-slate-200 bg-white/95 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.16)] backdrop-blur">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${statusView.iconClass}`}>
