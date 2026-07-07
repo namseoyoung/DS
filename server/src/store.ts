@@ -191,11 +191,31 @@ const calculateVisibleInvestment = (
   company: Pick<DbCompany, "initial_capital" | "current_value" | "previous_value" | "change_rate">,
   useRealtimeValuation: boolean,
 ) => {
-  if (useRealtimeValuation && investment.year === 4) {
-    return calculateEvaluatedInvestment(investment, company);
+  const investedAmount = getInvestmentAmount(investment);
+  const storedEvaluatedAmount = Number(investment.evaluated_amount ?? 0);
+  const storedProfitRate = Number(investment.profit_rate ?? 0);
+  const isSettled =
+    storedEvaluatedAmount > 0 ||
+    storedProfitRate !== 0 ||
+    (investedAmount > 0 && storedEvaluatedAmount === investedAmount);
+
+  if (!isSettled) {
+    return { investedAmount, evaluatedAmount: investedAmount, profitRate: 0 };
   }
 
-  return calculateEvaluatedInvestment(investment, company);
+  if (useRealtimeValuation && investment.year === 4) {
+    return {
+      investedAmount,
+      evaluatedAmount: storedEvaluatedAmount,
+      profitRate: storedProfitRate,
+    };
+  }
+
+  return {
+    investedAmount,
+    evaluatedAmount: storedEvaluatedAmount,
+    profitRate: storedProfitRate,
+  };
 };
 
 const getRealtimeOrderScore = (
@@ -794,7 +814,7 @@ class MemoryStore implements Store {
       company.updated_at = now();
     }
     this.session.year = Math.min(4, this.session.year + 1);
-    await this.setStatus(this.session.year === 4 ? "ROUND_INVESTING" : "YEAR_ENDED");
+    await this.setStatus("YEAR_ENDED");
     if (this.session.year === 4) {
       this.session.timer_ends_at = null;
       this.session.paused_remaining_seconds = null;
@@ -815,7 +835,7 @@ class MemoryStore implements Store {
     this.session.current_round = nextRound;
     this.session.max_rounds = MAX_ROUNDS;
     this.session.previous_status = this.session.status;
-    this.session.status = "ROUND_INVESTING";
+    this.session.status = "YEAR_ENDED";
     this.session.timer_ends_at = null;
     this.session.paused_remaining_seconds = null;
     this.session.updated_at = now();
@@ -1645,7 +1665,7 @@ class SupabaseStore extends MemoryStore {
         current_round: nextYear === 4 ? 1 : state.currentRound,
         max_rounds: MAX_ROUNDS,
         previous_status: state.status,
-        status: nextYear === 4 ? "ROUND_INVESTING" : "YEAR_ENDED",
+        status: "YEAR_ENDED",
         timer_ends_at: null,
         paused_remaining_seconds: null,
         updated_at: now(),
@@ -1682,7 +1702,7 @@ class SupabaseStore extends MemoryStore {
         current_round: nextRound,
         max_rounds: MAX_ROUNDS,
         previous_status: state.status,
-        status: "ROUND_INVESTING",
+        status: "YEAR_ENDED",
         timer_ends_at: null,
         paused_remaining_seconds: null,
         updated_at: now(),
