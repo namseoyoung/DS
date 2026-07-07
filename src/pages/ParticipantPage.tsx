@@ -90,8 +90,8 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   const [password, setPassword] = useState("");
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [profileCompany, setProfileCompany] = useState<Company | null>(null);
-  const [dismissedAnnouncementId, setDismissedAnnouncementId] = useState<string | null>(null);
-  const [dismissedNewsId, setDismissedNewsId] = useState<string | null>(null);
+  const [readAnnouncementIds, setReadAnnouncementIds] = useState<string[]>(() => readFeedIds("announcements"));
+  const [readNewsIds, setReadNewsIds] = useState<string[]>(() => readFeedIds("news"));
   const [error, setError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [feedSheet, setFeedSheet] = useState<"news" | "announcements" | null>(null);
@@ -216,52 +216,34 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
   const message = statusMessage[state.status];
   const latestNews = state.news[0];
   const latestAnnouncement = state.announcements[0];
-  const showAnnouncementToast =
-    latestAnnouncement && latestAnnouncement.id !== dismissedAnnouncementId;
-  const showNewsToast = latestNews && latestNews.id !== dismissedNewsId;
+  const unreadAnnouncements = state.announcements.filter((item) => !readAnnouncementIds.includes(item.id));
+  const unreadNews = state.news.filter((item) => !readNewsIds.includes(item.id));
+  const openFeed = (type: "news" | "announcements") => {
+    if (type === "news") {
+      const nextIds = mergeIds(readNewsIds, state.news.map((item) => item.id));
+      setReadNewsIds(nextIds);
+      writeFeedIds("news", nextIds);
+    } else {
+      const nextIds = mergeIds(readAnnouncementIds, state.announcements.map((item) => item.id));
+      setReadAnnouncementIds(nextIds);
+      writeFeedIds("announcements", nextIds);
+    }
+    setFeedSheet(type);
+  };
+  const markFeedRead = (type: "news" | "announcements") => {
+    if (type === "news") {
+      const nextIds = mergeIds(readNewsIds, unreadNews.map((item) => item.id));
+      setReadNewsIds(nextIds);
+      writeFeedIds("news", nextIds);
+      return;
+    }
+    const nextIds = mergeIds(readAnnouncementIds, unreadAnnouncements.map((item) => item.id));
+    setReadAnnouncementIds(nextIds);
+    writeFeedIds("announcements", nextIds);
+  };
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
-      {showAnnouncementToast || showNewsToast ? (
-        <section className="fixed left-3 right-3 top-3 z-40 mx-auto flex max-w-md flex-col gap-2">
-          {showNewsToast ? (
-            <div className="rounded-card border border-slate-200 bg-slate-100 p-5 text-slate-950 shadow-2xl">
-              <div className="flex items-start justify-between gap-3">
-                <button type="button" onClick={() => setFeedSheet("news")} className="min-w-0 flex-1 text-left">
-                  <p className="text-xs font-bold text-slate-500">뉴스</p>
-                  <p className="mt-1 truncate text-sm font-bold">{latestNews.title}</p>
-                  <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5">{latestNews.content}</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDismissedNewsId(latestNews.id)}
-                  className="shrink-0 rounded-full bg-slate-950/10 px-3 py-1 text-xs font-bold text-slate-700"
-                >
-                  닫기
-                </button>
-              </div>
-            </div>
-          ) : null}
-          {showAnnouncementToast ? (
-            <div className="rounded-card bg-blue-600 p-5 text-white shadow-2xl">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold text-blue-200">공지</p>
-                  <p className="mt-1 text-sm font-semibold leading-5">{latestAnnouncement.content}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setDismissedAnnouncementId(latestAnnouncement.id)}
-                  className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs font-bold"
-                >
-                  닫기
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
       <HeaderStats
         realName={user.realName}
         companyName={user.companyName}
@@ -290,20 +272,28 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
               : `${state.year}년차 진행 중`
           }
         />
+        <FeedAlertStack
+          latestNews={latestNews}
+          latestAnnouncement={latestAnnouncement}
+          unreadNewsCount={unreadNews.length}
+          unreadAnnouncementCount={unreadAnnouncements.length}
+          onOpen={openFeed}
+          onMarkRead={markFeedRead}
+        />
         <section className="grid grid-cols-2 gap-3">
           <FeedShortcut
             icon={<Bell size={16} aria-hidden />}
             label="공지"
             title={latestAnnouncement?.content ?? "새 공지가 없습니다"}
-            meta={state.announcements.length > 0 ? `${state.announcements.length}개` : "확인 완료"}
-            onClick={() => setFeedSheet("announcements")}
+            meta={unreadAnnouncements.length > 0 ? `새 ${unreadAnnouncements.length}개` : "확인 완료"}
+            onClick={() => openFeed("announcements")}
           />
           <FeedShortcut
             icon={<Newspaper size={16} aria-hidden />}
             label="뉴스"
             title={latestNews ? `${latestNews.title} · ${latestNews.content}` : "새 뉴스가 없습니다"}
-            meta={state.news.length > 0 ? `${state.news.length}개` : "대기 중"}
-            onClick={() => setFeedSheet("news")}
+            meta={unreadNews.length > 0 ? `새 ${unreadNews.length}개` : "대기 중"}
+            onClick={() => openFeed("news")}
           />
         </section>
 
@@ -811,6 +801,117 @@ function FeedShortcut({
   );
 }
 
+function FeedAlertStack({
+  latestNews,
+  latestAnnouncement,
+  unreadNewsCount,
+  unreadAnnouncementCount,
+  onOpen,
+  onMarkRead,
+}: {
+  latestNews?: { id: string; title: string; content: string; createdAt: string };
+  latestAnnouncement?: { id: string; content: string; createdAt: string };
+  unreadNewsCount: number;
+  unreadAnnouncementCount: number;
+  onOpen: (type: "news" | "announcements") => void;
+  onMarkRead: (type: "news" | "announcements") => void;
+}) {
+  if (unreadNewsCount === 0 && unreadAnnouncementCount === 0) return null;
+
+  return (
+    <section className="space-y-2">
+      {unreadAnnouncementCount > 0 && latestAnnouncement ? (
+        <FeedAlert
+          tone="blue"
+          label="공지"
+          title={latestAnnouncement.content}
+          count={unreadAnnouncementCount}
+          onOpen={() => onOpen("announcements")}
+          onMarkRead={() => onMarkRead("announcements")}
+        />
+      ) : null}
+      {unreadNewsCount > 0 && latestNews ? (
+        <FeedAlert
+          tone="gray"
+          label="뉴스"
+          title={latestNews.title}
+          body={latestNews.content}
+          count={unreadNewsCount}
+          onOpen={() => onOpen("news")}
+          onMarkRead={() => onMarkRead("news")}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+function FeedAlert({
+  tone,
+  label,
+  title,
+  body,
+  count,
+  onOpen,
+  onMarkRead,
+}: {
+  tone: "blue" | "gray";
+  label: string;
+  title: string;
+  body?: string;
+  count: number;
+  onOpen: () => void;
+  onMarkRead: () => void;
+}) {
+  const isBlue = tone === "blue";
+
+  return (
+    <article
+      className={`rounded-card border p-4 shadow-soft ${
+        isBlue
+          ? "border-blue-100 bg-blue-600 text-white"
+          : "border-slate-200 bg-slate-100 text-slate-950"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className={`text-xs font-black ${isBlue ? "text-blue-100" : "text-slate-500"}`}>{label}</p>
+            <span
+              className={`grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-black ${
+                isBlue ? "bg-white text-blue-600" : "bg-red-500 text-white"
+              }`}
+            >
+              {count > 99 ? "99+" : count}
+            </span>
+          </div>
+          <p className="mt-1 line-clamp-1 text-sm font-black">{title}</p>
+          {body ? <p className={`mt-1 line-clamp-2 text-sm font-semibold ${isBlue ? "text-blue-50" : "text-slate-600"}`}>{body}</p> : null}
+        </div>
+        <div className="flex shrink-0 flex-col gap-2">
+          <button
+            type="button"
+            onClick={onOpen}
+            className={`rounded-full px-3 py-1.5 text-xs font-black ${
+              isBlue ? "bg-white text-blue-600" : "bg-slate-950 text-white"
+            }`}
+          >
+            전체보기
+          </button>
+          <button
+            type="button"
+            onClick={onMarkRead}
+            className={`rounded-full px-3 py-1 text-xs font-bold ${
+              isBlue ? "bg-white/15 text-white" : "bg-slate-950/10 text-slate-600"
+            }`}
+          >
+            확인
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function InvestmentStatusBar({
   status,
   message,
@@ -984,6 +1085,35 @@ function formatFeedTime(value: string) {
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 }
+
+type FeedType = "news" | "announcements";
+
+const feedReadKey = (type: FeedType) => `participant-read-${type}`;
+
+function readFeedIds(type: FeedType) {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(feedReadKey(type));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeFeedIds(type: FeedType, ids: string[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(feedReadKey(type), JSON.stringify(ids.slice(-100)));
+  } catch {
+    // Some mobile browsers can reject storage writes in private mode.
+  }
+}
+
+function mergeIds(current: string[], next: string[]) {
+  return Array.from(new Set([...current, ...next])).slice(-100);
+}
+
 function formatChartLabel(label: string) {
   const match = label.match(/^(\d+).+-(\d+)$/);
   if (!match) return "가치 변동";
