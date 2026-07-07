@@ -311,10 +311,15 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
             </label>
             {state.companies.map((company) => (
               <label key={company.id}>
-                <span className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-500">
-                  <span>{company.name} 변동률</span>
-                  <span className="text-right text-blue-600">
-                    {investmentRankLabels.get(company.id)} · 이번 투자 {formatWon(company.currentYearInvestment)}
+                <span className="block text-xs font-semibold text-slate-500">
+                  <span className="flex items-center justify-between gap-1">
+                    <span className="min-w-0 truncate">{company.name} 변동률</span>
+                    <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-black text-blue-600">
+                      {investmentRankLabels.get(company.id)}
+                    </span>
+                  </span>
+                  <span className="mt-1 block truncate text-blue-600">
+                    이번 투자 {formatWon(company.currentYearInvestment)}
                   </span>
                 </span>
                 <input
