@@ -225,17 +225,17 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
       {showAnnouncementToast || showNewsToast ? (
         <section className="fixed left-3 right-3 top-3 z-40 mx-auto flex max-w-md flex-col gap-2">
           {showNewsToast ? (
-            <div className="rounded-card border border-yellow-200 bg-yellow-300 p-5 text-yellow-950 shadow-2xl">
+            <div className="rounded-card border border-slate-200 bg-slate-100 p-5 text-slate-950 shadow-2xl">
               <div className="flex items-start justify-between gap-3">
                 <button type="button" onClick={() => setFeedSheet("news")} className="min-w-0 flex-1 text-left">
-                  <p className="text-xs font-bold text-yellow-700">뉴스</p>
+                  <p className="text-xs font-bold text-slate-500">뉴스</p>
                   <p className="mt-1 truncate text-sm font-bold">{latestNews.title}</p>
                   <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5">{latestNews.content}</p>
                 </button>
                 <button
                   type="button"
                   onClick={() => setDismissedNewsId(latestNews.id)}
-                  className="shrink-0 rounded-full bg-yellow-950/10 px-3 py-1 text-xs font-bold text-yellow-950"
+                  className="shrink-0 rounded-full bg-slate-950/10 px-3 py-1 text-xs font-bold text-slate-700"
                 >
                   닫기
                 </button>
