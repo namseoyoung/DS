@@ -284,7 +284,11 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
           showCountdown={showCountdown}
           isUrgent={isFinalThirtySeconds}
           remainingSeconds={state.remainingSeconds}
-          roundLabel={state.year === 4 ? `${state.currentRound}/${state.maxRounds} 라운드` : undefined}
+          roundLabel={
+            state.year === 4
+              ? `4년차 ${state.currentRound}/${state.maxRounds}라운드`
+              : `${state.year}년차 진행 중`
+          }
         />
         <section className="grid grid-cols-2 gap-3">
           <FeedShortcut
