@@ -70,14 +70,9 @@ export function DisplayPage({ state, connected }: DisplayPageProps) {
 
   return (
     <main className="relative h-screen overflow-hidden bg-[#020712] px-4 py-3 text-white">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_49%_5%,rgba(58,126,255,0.34),transparent_25%),radial-gradient(circle_at_77%_13%,rgba(80,71,255,0.2),transparent_20%),linear-gradient(180deg,#050a18,#01040c)]" />
-      <div className="pointer-events-none fixed inset-x-0 top-0 h-[185px] opacity-70 [background-image:linear-gradient(90deg,transparent_0%,rgba(58,146,255,0.26)_50%,transparent_100%),radial-gradient(circle_at_56%_32%,rgba(116,176,255,0.62),transparent_5%)]" />
-      <div className="pointer-events-none fixed inset-0 opacity-[0.14] [background-image:linear-gradient(rgba(70,143,255,0.28)_1px,transparent_1px),linear-gradient(90deg,rgba(70,143,255,0.28)_1px,transparent_1px)] [background-size:64px_64px]" />
-
       <section className="relative mx-auto flex h-full max-w-[1120px] flex-col gap-2.5">
         <header className="grid shrink-0 grid-cols-[1fr_320px] items-end gap-4">
           <div className="relative min-w-0">
-            <div className="pointer-events-none absolute left-[255px] top-0 hidden h-24 w-[420px] rounded-full bg-[radial-gradient(circle,rgba(48,140,255,0.34),transparent_58%)] blur-sm lg:block" />
             <p className="flex items-center gap-1.5 text-[13px] font-black tracking-wide text-[#38bdf8]">
               <span className="h-3 w-3 rounded-full bg-blue-500 shadow-[0_0_16px_rgba(59,130,246,0.95)]" />
               {connected ? "LIVE" : "RECONNECTING"} · {state.year}년차 · {statusLabel[state.status]}
