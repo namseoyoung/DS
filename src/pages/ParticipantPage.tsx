@@ -877,9 +877,7 @@ function FeedAlert({
           <div className="flex items-center gap-2">
             <p className={`text-xs font-black ${isBlue ? "text-blue-100" : "text-slate-500"}`}>{label}</p>
             <span
-              className={`grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px] font-black ${
-                isBlue ? "bg-white text-blue-600" : "bg-red-500 text-white"
-              }`}
+              className="grid h-5 min-w-5 place-items-center rounded-full bg-red-500 px-1.5 text-[11px] font-black text-white"
             >
               {count > 99 ? "99+" : count}
             </span>
@@ -904,7 +902,7 @@ function FeedAlert({
               isBlue ? "bg-white/15 text-white" : "bg-slate-950/10 text-slate-600"
             }`}
           >
-            확인
+            닫기
           </button>
         </div>
       </div>

@@ -75,6 +75,18 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
     return { invested, averageAsset, todayLogs };
   }, [state]);
 
+  const investmentRankLabels = useMemo(() => {
+    if (!state) return new Map<CompanyId, string>();
+    return new Map(
+      state.companies.map((company) => {
+        const amount = company.currentYearInvestment;
+        const rank = state.companies.filter((item) => item.currentYearInvestment > amount).length + 1;
+        const isTie = state.companies.filter((item) => item.currentYearInvestment === amount).length > 1;
+        return [company.id, `${isTie ? "공동 " : ""}${rank}위`];
+      }),
+    );
+  }, [state]);
+
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -301,7 +313,9 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
               <label key={company.id}>
                 <span className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-500">
                   <span>{company.name} 변동률</span>
-                  <span className="text-blue-600">이번 투자 {formatWon(company.currentYearInvestment)}</span>
+                  <span className="text-right text-blue-600">
+                    {investmentRankLabels.get(company.id)} · 이번 투자 {formatWon(company.currentYearInvestment)}
+                  </span>
                 </span>
                 <input
                   value={settlement[company.id] ?? ""}
