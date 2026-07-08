@@ -767,6 +767,7 @@ class MemoryStore implements Store {
       const nextValue = clampCompanyValue(company.current_value * (1 + change / 100));
       company.previous_value = company.current_value;
       company.current_value = nextValue;
+      company.change_rate = change;
       company.updated_at = now();
       this.history.push({
         company_id: company.id,
@@ -1564,7 +1565,12 @@ class SupabaseStore extends MemoryStore {
     for (const company of state.companies) {
       const change = changes[company.id] ?? 0;
       const nextValue = clampCompanyValue(company.currentValue * (1 + change / 100));
-      nextCompanies.set(company.id, { ...company, previousValue: company.currentValue, currentValue: nextValue });
+      nextCompanies.set(company.id, {
+        ...company,
+        previousValue: company.currentValue,
+        currentValue: nextValue,
+        changeRate: change,
+      });
       await this.supabase
         .from("companies")
         .update({
