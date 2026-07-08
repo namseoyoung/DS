@@ -307,6 +307,11 @@ function CompanyTopFive({ companies }: { companies: GameState["companies"] }) {
 }
 
 function RankingBoard({ state }: { state: GameState }) {
+  const revealedUsers = state.participants
+    .slice()
+    .sort((a, b) => (a.personalRank ?? 999) - (b.personalRank ?? 999))
+    .slice(5, 10);
+
   return (
     <aside className="rounded-[14px] border border-blue-300/50 bg-[#041127]/82 p-3.5 shadow-[0_0_30px_rgba(37,99,235,0.2)] backdrop-blur">
       <div className="flex items-center justify-between border-b border-blue-300/22 pb-3">
@@ -321,12 +326,12 @@ function RankingBoard({ state }: { state: GameState }) {
 
       <div className="mt-3 space-y-2">
         {state.personalRankingRevealed
-          ? state.participants.slice(5, 10).map((user) => (
+          ? revealedUsers.map((user, index) => (
               <div
                 key={user.id}
                 className="grid grid-cols-[38px_1fr_auto] items-center gap-3 rounded-[10px] border border-blue-300/20 bg-[#071832]/82 px-3 py-3 shadow-[inset_0_0_16px_rgba(59,130,246,0.08)]"
               >
-                <span className="font-mono text-2xl font-black text-blue-300">{user.personalRank}</span>
+                <span className="font-mono text-2xl font-black text-blue-300">{user.personalRank ?? index + 6}</span>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-black text-white">{user.realName}</p>
                   <p className="truncate text-[11px] font-bold text-blue-200/75">{user.companyName}</p>

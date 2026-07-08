@@ -1535,10 +1535,11 @@ class SupabaseStore extends MemoryStore {
   }
 
   async setPersonalRankingRevealed(revealed: boolean) {
-    await this.supabase
+    const { error } = await this.supabase
       .from("game_status")
       .update({ personal_ranking_revealed: revealed, updated_at: now() })
       .eq("id", DEFAULT_SESSION_ID);
+    if (error) throw error;
   }
 
   async paySalary() {

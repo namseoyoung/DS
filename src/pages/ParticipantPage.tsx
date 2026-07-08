@@ -542,7 +542,7 @@ function PersonalProfitFlow({
                 <BarChart data={chartData} barCategoryGap="45%">
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis hide />
-                  <Tooltip formatter={(value) => [formatSignedWon(Number(value)), "수익금"]} />
+                  <Tooltip content={<ProfitTooltip />} />
                   <Bar dataKey="profitAmount" radius={[10, 10, 10, 10]} maxBarSize={52}>
                     {chartData.map((item) => (
                       <Cell key={item.label} fill={item.profitAmount >= 0 ? "#ef4444" : "#3b82f6"} />
@@ -563,7 +563,7 @@ function PersonalProfitFlow({
                 <LineChart data={chartData}>
                   <XAxis dataKey="label" hide />
                   <YAxis hide domain={["dataMin - 100", "dataMax + 100"]} />
-                  <Tooltip formatter={(value) => [formatPercent(Number(value)), "수익률"]} />
+                  <Tooltip content={<ProfitTooltip />} />
                   <Line type="monotone" dataKey="returnRate" name="수익률" stroke="#0f172a" strokeWidth={3} dot={{ r: 3 }} isAnimationActive />
                 </LineChart>
               </ResponsiveContainer>
@@ -610,6 +610,27 @@ function PersonalProfitFlow({
 
       {isLogSheetOpen ? <LogHistorySheet logs={logs} onClose={() => setIsLogSheetOpen(false)} /> : null}
     </section>
+  );
+}
+
+function ProfitTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload?: { profitAmount: number; returnRate: number } }>;
+  label?: string | number;
+}) {
+  const data = payload?.[0]?.payload;
+  if (!active || !data) return null;
+
+  return (
+    <div className="rounded-button border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-950 shadow-soft">
+      <p className="text-sm">{label}</p>
+      <p className="mt-1">수익금 : {formatSignedWon(data.profitAmount)}</p>
+      <p className="mt-0.5">수익률 : {formatPercent(data.returnRate)}</p>
+    </div>
   );
 }
 

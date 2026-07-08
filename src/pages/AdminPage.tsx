@@ -139,6 +139,11 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
     }
   };
 
+  const togglePersonalRanking = () => {
+    if (!admin || !state) return;
+    run(() => api.setPersonalRankingRevealed(admin.id, !state.personalRankingRevealed));
+  };
+
   const updateUserField = (
     user: User,
     patch: Partial<Pick<User, "realName" | "companyId" | "rank" | "cash">>,
@@ -306,7 +311,7 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
             <Control
               icon={<Trophy size={16} />}
               label={state.personalRankingRevealed ? "개인랭킹 숨김" : "개인랭킹 공개"}
-              onClick={() => run(() => api.setPersonalRankingRevealed(admin.id, !state.personalRankingRevealed))}
+              onClick={togglePersonalRanking}
             />
             <Control icon={<Trophy size={16} />} label="게임 종료" onClick={() => run(() => api.setStatus(admin.id, "FINISHED"), "게임을 종료할까요?")} />
             <Control icon={<RotateCcw size={16} />} label="전체 초기화" danger onClick={() => run(() => api.reset(admin.id), "전체 데이터를 초기화할까요?")} />
