@@ -65,13 +65,17 @@ export function InvestmentSheet({ company, cash, onClose, onInvest }: Investment
 
         <label className="block">
           <span className="text-sm font-semibold text-slate-600">투자금</span>
-          <input
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-            inputMode="numeric"
-            placeholder="투자할 금액 입력"
-            className="mt-3 h-[52px] w-full rounded-button border border-slate-200 bg-slate-50 px-4 text-xl font-bold text-slate-950 outline-none transition focus:border-slate-950 focus:bg-white"
-          />
+          <div className="mt-3 flex h-[52px] items-center rounded-button border border-slate-200 bg-slate-50 px-4 transition focus-within:border-slate-950 focus-within:bg-white">
+            <input
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              inputMode="numeric"
+              placeholder="금액 입력"
+              className="min-w-0 flex-1 bg-transparent text-xl font-bold text-slate-950 outline-none placeholder:text-slate-300"
+            />
+            <span className="ml-3 shrink-0 text-base font-bold text-slate-500">만원</span>
+          </div>
+          <p className="mt-2 text-xs font-semibold text-slate-400">예: 100 입력 시 100만원으로 투자됩니다.</p>
         </label>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
@@ -82,7 +86,7 @@ export function InvestmentSheet({ company, cash, onClose, onInvest }: Investment
               onClick={() => setAmount(String(numericAmount + quickAmount))}
               className="h-[52px] rounded-button bg-slate-100 px-3 text-sm font-bold text-slate-700 transition active:scale-[0.98]"
             >
-              +{formatWon(quickAmount)}
+              +{quickAmount.toLocaleString("ko-KR")}만원
             </button>
           ))}
           <button
