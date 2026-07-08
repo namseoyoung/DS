@@ -8,13 +8,15 @@ type CompanyCardProps = {
   investedAmount: number;
   evaluatedAmount: number;
   canInvest: boolean;
+  disabledReason?: string;
   onSelect?: (company: Company) => void;
   onOpenProfile?: (company: Company) => void;
 };
 
-export function CompanyCard({ company, investedAmount, evaluatedAmount, canInvest, onSelect, onOpenProfile }: CompanyCardProps) {
+export function CompanyCard({ company, investedAmount, evaluatedAmount, canInvest, disabledReason, onSelect, onOpenProfile }: CompanyCardProps) {
   const profitAmount = evaluatedAmount - investedAmount;
   const isProfitPositive = profitAmount >= 0;
+  const disabledLabel = disabledReason ?? "투자 마감";
 
   return (
     <article className="w-full rounded-card border border-slate-200 bg-white p-6 text-left shadow-soft transition duration-300">
@@ -76,7 +78,7 @@ export function CompanyCard({ company, investedAmount, evaluatedAmount, canInves
         <div className="min-w-0 rounded-button bg-slate-50 px-3 py-2">
           <span className="text-xs font-medium text-slate-500">투자</span>
           <p className={`mt-1 text-sm font-bold ${canInvest ? "text-slate-950" : "text-slate-400"}`}>
-            {canInvest ? "가능" : "마감"}
+            {canInvest ? "가능" : disabledReason ? "제한" : "마감"}
           </p>
         </div>
       </div>
@@ -87,7 +89,7 @@ export function CompanyCard({ company, investedAmount, evaluatedAmount, canInves
         onClick={() => onSelect?.(company)}
         className="mt-4 flex h-[46px] w-full items-center justify-center gap-1 rounded-button bg-slate-950 text-sm font-bold text-white transition active:scale-[0.99] disabled:bg-slate-100 disabled:text-slate-400"
       >
-        {canInvest ? "투자하기" : "투자 마감"}
+        {canInvest ? "투자하기" : disabledLabel}
         {canInvest ? <ChevronRight size={16} aria-hidden /> : null}
       </button>
     </article>

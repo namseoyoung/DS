@@ -558,6 +558,9 @@ class MemoryStore implements Store {
     if (!user || !company || user.role !== "participant") {
       throw new Error("투자할 회원 또는 기업을 찾을 수 없습니다.");
     }
+    if (this.session.year === 4 && this.session.current_round === 1 && user.company_id === company.id) {
+      throw new Error("4년차 1라운드에는 본인 회사에 투자할 수 없습니다.");
+    }
     if (amount <= 0 || amount > user.cash) {
       throw new Error("보유 현금보다 많이 투자할 수 없습니다.");
     }
@@ -1298,6 +1301,9 @@ class SupabaseStore extends MemoryStore {
     const company = state.companies.find((item) => item.id === companyId);
     if (!user || !company || user.role !== "participant") {
       throw new Error("투자할 회원 또는 기업을 찾을 수 없습니다.");
+    }
+    if (state.year === 4 && state.currentRound === 1 && user.companyId === company.id) {
+      throw new Error("4년차 1라운드에는 본인 회사에 투자할 수 없습니다.");
     }
     if (amount <= 0 || amount > user.cash) {
       throw new Error("보유 현금보다 많이 투자할 수 없습니다.");
