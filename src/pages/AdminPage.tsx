@@ -59,6 +59,7 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
   const [settlement, setSettlement] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [isRankingSheetOpen, setIsRankingSheetOpen] = useState(false);
+  const [isInvestmentStatusOpen, setIsInvestmentStatusOpen] = useState(false);
 
   const admin = state?.users.find((user) => user.id === adminId && user.role === "admin");
 
@@ -85,6 +86,12 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
         return [company.id, `${isTie ? "공동 " : ""}${rank}위`];
       }),
     );
+  }, [state]);
+
+  const investmentStatus = useMemo(() => {
+    if (!state) return { completed: 0, pending: 0 };
+    const completed = state.participants.filter((user) => user.cash <= 0).length;
+    return { completed, pending: state.participants.length - completed };
   }, [state]);
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
@@ -371,6 +378,30 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
           </section>
         </div>
 
+        <section className="rounded-card bg-white p-6 shadow-soft">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-400">운영 확인</p>
+              <h2 className="mt-1 text-lg font-bold">참가자 투자 현황</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                현금 0원 기준으로 전액 투자 여부를 확인합니다.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 md:min-w-[360px]">
+              <MiniStat label="전체" value={`${state.participants.length}명`} />
+              <MiniStat label="완료" value={`${investmentStatus.completed}명`} valueClassName="text-emerald-600" />
+              <MiniStat label="미완료" value={`${investmentStatus.pending}명`} valueClassName={investmentStatus.pending > 0 ? "text-red-500" : "text-slate-950"} />
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsInvestmentStatusOpen(true)}
+              className="h-[44px] rounded-button bg-slate-950 px-5 text-sm font-bold text-white"
+            >
+              자세히 보기
+            </button>
+          </div>
+        </section>
+
         <div className="grid gap-5 xl:grid-cols-[1.4fr_0.8fr]">
           <section className="rounded-card bg-white p-6 shadow-soft">
             <h2 className="font-bold">회원 관리</h2>
@@ -553,7 +584,77 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
       {isRankingSheetOpen ? (
         <PersonalRankingSheet participants={state.participants} onClose={() => setIsRankingSheetOpen(false)} />
       ) : null}
+      {isInvestmentStatusOpen ? (
+        <InvestmentStatusSheet participants={state.participants} onClose={() => setIsInvestmentStatusOpen(false)} />
+      ) : null}
     </main>
+  );
+}
+
+function InvestmentStatusSheet({ participants, onClose }: { participants: User[]; onClose: () => void }) {
+  const sortedParticipants = participants
+    .slice()
+    .sort((a, b) => b.cash - a.cash || a.realName.localeCompare(b.realName, "ko-KR"));
+
+  return (
+    <section className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/40 px-3 pb-3" onClick={onClose}>
+      <div
+        className="w-full max-w-3xl overflow-hidden rounded-card bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <div>
+            <p className="text-xs font-bold text-slate-400">전액 투자 확인</p>
+            <h2 className="text-lg font-bold">참가자 투자 현황</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="닫기"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600"
+          >
+            <X size={18} aria-hidden />
+          </button>
+        </header>
+        <div className="max-h-[64vh] overflow-y-auto px-5 py-4">
+          <table className="w-full min-w-[620px] text-left text-sm">
+            <thead className="text-xs text-slate-400">
+              <tr>
+                <th className="py-2">상태</th>
+                <th>이름</th>
+                <th>회사</th>
+                <th>남은 현금</th>
+                <th>투자금</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedParticipants.map((user) => {
+                const completed = user.cash <= 0;
+                return (
+                  <tr key={user.id} className="border-t border-slate-100">
+                    <td className="py-3">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-black ${
+                          completed ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"
+                        }`}
+                      >
+                        {completed ? "완료" : "미완료"}
+                      </span>
+                    </td>
+                    <td className="font-bold">{user.realName}</td>
+                    <td className="text-slate-500">{user.companyName}</td>
+                    <td className={completed ? "font-bold text-slate-400" : "font-bold text-red-500"}>
+                      {formatWon(user.cash)}
+                    </td>
+                    <td className="font-bold">{formatWon(user.investedAmount)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -621,6 +722,15 @@ function Stat({ label, value }: { label: string; value: string }) {
       <p className="text-sm text-slate-500">{label}</p>
       <p className="mt-2 text-2xl font-bold">{value}</p>
     </section>
+  );
+}
+
+function MiniStat({ label, value, valueClassName = "text-slate-950" }: { label: string; value: string; valueClassName?: string }) {
+  return (
+    <div className="rounded-button bg-slate-50 px-4 py-3">
+      <p className="text-xs font-bold text-slate-400">{label}</p>
+      <p className={`mt-1 text-lg font-black ${valueClassName}`}>{value}</p>
+    </div>
   );
 }
 
