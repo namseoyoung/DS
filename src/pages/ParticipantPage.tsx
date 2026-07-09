@@ -407,8 +407,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
           <div className="space-y-4">
             {state.companies.map((company) => {
               const holding = user.holdings.find((item) => item.companyId === company.id);
-              const isOwnCompanyBlocked =
-                state.year === 4 && state.currentRound === 1 && company.id === user.companyId;
+              const isOwnCompanyBlocked = state.year === 1 && company.id === user.companyId;
               return (
                 <CompanyCard
                   key={company.id}
@@ -416,7 +415,7 @@ export function ParticipantPage({ state, setState, connected }: ParticipantPageP
                   investedAmount={holding?.investedAmount ?? 0}
                   evaluatedAmount={holding?.evaluatedAmount ?? 0}
                   canInvest={canInvest && !isOwnCompanyBlocked}
-                  disabledReason={isOwnCompanyBlocked ? "1라운드 본인회사 불가" : undefined}
+                  disabledReason={isOwnCompanyBlocked ? "1년차 본인회사 불가" : undefined}
                   onSelect={setSelectedCompany}
                   onOpenProfile={setProfileCompany}
                 />
