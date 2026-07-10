@@ -237,11 +237,7 @@ values
   ('p023', 'p023', '1111', '최은주', '최은주', 'ain', '과장', 0, 'participant'),
   ('p024', 'p024', '1111', '최지은', '최지은', 'donghyun', '차장', 0, 'participant'),
   ('p025', 'p025', '1111', '최하은', '최하은', 'yeil', '부장', 0, 'participant'),
-  ('p026', 'p026', '1111', '한지영', '한지영', 'sanghyun', '사원', 0, 'participant'),
-  ('p027', 'p027', '1111', '테스트27', '테스트27', 'seoyoung', '대리', 0, 'participant'),
-  ('p028', 'p028', '1111', '테스트28', '테스트28', 'ain', '과장', 0, 'participant'),
-  ('p029', 'p029', '1111', '테스트29', '테스트29', 'donghyun', '차장', 0, 'participant'),
-  ('p030', 'p030', '1111', '테스트30', '테스트30', 'yeil', '부장', 0, 'participant')
+  ('p026', 'p026', '1111', '한지영', '한지영', 'sanghyun', '사원', 0, 'participant')
 on conflict (id) do update set
   username = excluded.username,
   password = excluded.password,

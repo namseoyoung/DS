@@ -87,7 +87,7 @@ export const userSeeds: Array<{
     cash: 0,
     role: "admin",
   },
-  ...Array.from({ length: 30 }, (_, index) => {
+  ...Array.from({ length: 26 }, (_, index) => {
     const number = index + 1;
     const id = `p${String(number).padStart(3, "0")}`;
     const realName = participantNames[id] ?? `테스트${number}`;
