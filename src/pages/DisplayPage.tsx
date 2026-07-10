@@ -178,47 +178,119 @@ function Ending({ state, connected }: { state: GameState; connected: boolean }) 
   const companyMembers = state.participants.filter((user) => user.companyId === topCompany?.id);
 
   return (
-    <main className="min-h-screen bg-slate-950 px-8 py-8 text-white">
-      <section className="mx-auto max-w-7xl">
-        <p className="text-sm font-semibold text-amber-300">{connected ? "FINAL" : "OFFLINE"}</p>
-        <div className="mt-5 flex items-center gap-4">
-          <Trophy className="text-amber-300" size={72} aria-hidden />
+    <main className="relative grid h-screen overflow-hidden bg-[#020712] px-6 py-5 text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_5%,rgba(59,130,246,0.32),transparent_34%),linear-gradient(180deg,#07162f_0%,#020712_54%,#020712_100%)]" />
+      <section className="relative mx-auto flex h-full w-full max-w-[1180px] flex-col">
+        <header className="flex shrink-0 items-start justify-between gap-6">
           <div>
-            <h1 className="text-6xl font-bold tracking-normal">최종 엔딩</h1>
-            <p className="mt-3 text-2xl text-slate-300">기업 1등과 개인 자산 1등을 공개합니다.</p>
+            <p className="flex items-center gap-2 text-sm font-black tracking-wide text-blue-300">
+              <span className="h-3 w-3 rounded-full bg-blue-500 shadow-[0_0_18px_rgba(59,130,246,0.95)]" />
+              {connected ? "FINAL LIVE" : "FINAL OFFLINE"} · 인생여전
+            </p>
+            <h1 className="brand-shine mt-2 text-[76px] font-black leading-none tracking-normal text-white drop-shadow-[0_0_28px_rgba(96,165,250,0.46)]">
+              최종 엔딩
+            </h1>
+            <p className="mt-3 text-xl font-bold text-blue-100/85">
+              모든 투자가 종료되었습니다. 최종 우승 기업과 개인 자산 1위를 공개합니다.
+            </p>
           </div>
-        </div>
+          <div className="rounded-[18px] border border-blue-300/45 bg-[#06152f]/82 px-6 py-4 text-right shadow-[0_0_28px_rgba(37,99,235,0.22)]">
+            <p className="text-sm font-black text-blue-200">총 참가자</p>
+            <p className="mt-1 font-mono text-4xl font-black">{state.participants.length}명</p>
+          </div>
+        </header>
 
-        <div className="mt-10 grid gap-6 lg:grid-cols-2">
-          <section className="rounded-card bg-white p-8 text-slate-950">
-            <p className="text-lg font-semibold text-slate-500">최종 우승 기업</p>
-            <p className="mt-3 text-5xl font-bold">{topCompany?.name ?? "-"}</p>
-            <div className="mt-6 grid grid-cols-3 gap-3">
-              <Info label="최종 가치" value={topCompany ? formatValue(topCompany.currentValue) : "-"} />
-              <Info label="총 투자금" value={topCompany ? formatWon(topCompany.totalInvestment) : "-"} />
-              <Info
+        <div className="mt-5 grid min-h-0 flex-1 grid-cols-[1.15fr_0.85fr] gap-4">
+          <section className="relative overflow-hidden rounded-[24px] border border-blue-300/50 bg-[#041127]/88 p-7 shadow-[0_0_42px_rgba(37,99,235,0.24)]">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-300 to-violet-500" />
+            <div className="flex items-start justify-between gap-6">
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-lg font-black text-blue-200">
+                  <Trophy className="text-blue-300" size={26} />
+                  최종 우승 기업
+                </p>
+                <h2 className="mt-5 text-[68px] font-black leading-none text-white drop-shadow-[0_0_22px_rgba(96,165,250,0.34)]">
+                  {topCompany?.name ?? "-"}
+                </h2>
+                <p className="mt-4 max-w-xl text-xl font-bold leading-relaxed text-blue-100/80">
+                  {topCompany?.tagline || "가장 높은 기업 가치로 최종 우승을 차지했습니다."}
+                </p>
+              </div>
+
+              <div className="grid h-44 w-44 shrink-0 place-items-center rounded-full border border-blue-300/45 bg-blue-500/10 shadow-[0_0_44px_rgba(59,130,246,0.42)]">
+                {topCompany?.logoUrl ? (
+                  <img src={topCompany.logoUrl} alt="" className="h-36 w-36 rounded-full object-cover ring-2 ring-blue-200/60" />
+                ) : (
+                  <div
+                    className="grid h-36 w-36 place-items-center rounded-full text-5xl font-black text-white"
+                    style={{ backgroundColor: topCompany?.color ?? "#2563eb" }}
+                  >
+                    {topCompany?.name.slice(0, 1) ?? "-"}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-8 grid grid-cols-3 gap-3">
+              <EndingInfo label="최종 가치" value={topCompany ? formatValue(topCompany.currentValue) : "-"} />
+              <EndingInfo label="총 투자금" value={topCompany ? formatWon(topCompany.totalInvestment) : "-"} />
+              <EndingInfo
                 label="소속 평균 자산"
                 value={topCompany ? formatWon(topCompany.memberAverageAsset) : "-"}
               />
             </div>
-            <p className="mt-6 text-sm font-semibold text-slate-500">소속 회원</p>
-            <p className="mt-2 text-xl font-bold">
-              {companyMembers.length === 0 ? "없음" : companyMembers.map((user) => user.realName).join(", ")}
-            </p>
+
+            <div className="mt-5 rounded-[18px] border border-blue-300/18 bg-blue-950/36 px-5 py-4">
+              <p className="text-sm font-black text-blue-200">소속 회원</p>
+              <p className="mt-2 line-clamp-2 text-lg font-black text-white">
+                {companyMembers.length === 0 ? "없음" : companyMembers.map((user) => user.realName).join(" · ")}
+              </p>
+            </div>
           </section>
 
-          <section className="rounded-card bg-white p-8 text-slate-950">
-            <p className="text-lg font-semibold text-slate-500">개인 자산 1등</p>
-            <p className="mt-3 text-5xl font-bold">{winner?.realName ?? "-"}</p>
-            <div className="mt-6 grid grid-cols-3 gap-3">
-              <Info label="소속 회사" value={winner?.companyName ?? "-"} />
-              <Info label="최종 자산" value={winner ? formatWon(winner.totalAsset) : "-"} />
-              <Info label="수익률" value={winner ? formatPercent(winner.returnRate) : "-"} />
-            </div>
+          <section className="grid min-h-0 grid-rows-[auto_1fr] gap-4">
+            <article className="rounded-[24px] border border-blue-300/45 bg-white p-6 text-slate-950 shadow-[0_18px_50px_rgba(15,23,42,0.18)]">
+              <p className="flex items-center gap-2 text-lg font-black text-slate-500">
+                <Crown className="text-blue-600" size={24} />
+                개인 자산 1위
+              </p>
+              <h2 className="mt-4 text-5xl font-black">{winner?.realName ?? "-"}</h2>
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                <Info label="소속 회사" value={winner?.companyName ?? "-"} />
+                <Info label="최종 자산" value={winner ? formatWon(winner.totalAsset) : "-"} />
+                <Info label="수익률" value={winner ? formatPercent(winner.returnRate) : "-"} />
+              </div>
+            </article>
+
+            <article className="rounded-[24px] border border-blue-300/45 bg-[#041127]/88 p-6 shadow-[0_0_30px_rgba(37,99,235,0.2)]">
+              <p className="text-lg font-black text-blue-100">기업 TOP5</p>
+              <div className="mt-4 space-y-2">
+                {state.companies.slice(0, 5).map((company) => (
+                  <div
+                    key={company.id}
+                    className="grid grid-cols-[34px_42px_1fr_auto] items-center gap-3 rounded-[14px] border border-blue-300/16 bg-[#071832]/82 px-3 py-2.5"
+                  >
+                    <span className="font-mono text-xl font-black text-blue-300">{company.rank}</span>
+                    <CompanyAvatar logoUrl={company.logoUrl} color={company.color} name={company.name} compact />
+                    <span className="truncate text-base font-black text-white">{company.name}</span>
+                    <span className="text-sm font-black text-blue-100">{formatValue(company.currentValue)}</span>
+                  </div>
+                ))}
+              </div>
+            </article>
           </section>
         </div>
       </section>
     </main>
+  );
+}
+
+function EndingInfo({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[16px] border border-blue-300/18 bg-blue-950/36 px-4 py-4">
+      <p className="text-xs font-black text-blue-200/80">{label}</p>
+      <p className="mt-2 truncate text-2xl font-black text-white">{value}</p>
+    </div>
   );
 }
 
