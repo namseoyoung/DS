@@ -1,7 +1,7 @@
 import type { CompanyId, GameStatus, JobRank, Role } from "../../src/types";
 
 export const DEFAULT_SESSION_ID = "main-event";
-export const CAPACITY = 40;
+export const CAPACITY = 31;
 export const initialStatus: GameStatus = "BEFORE_START";
 
 export const companySeeds: Array<{

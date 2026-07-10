@@ -9,7 +9,7 @@ create table if not exists public.game_status (
   paused_remaining_seconds integer,
   current_round integer not null default 1,
   max_rounds integer not null default 4,
-  capacity integer not null default 40,
+  capacity integer not null default 31,
   personal_ranking_revealed boolean not null default false,
   updated_at timestamptz not null default now()
 );
@@ -170,7 +170,7 @@ create index if not exists idx_announcements_created on public.announcements(cre
 create index if not exists idx_user_yearly_results_user_year on public.user_yearly_results(user_id, year);
 
 insert into public.game_status (id, year, status, capacity, current_round, max_rounds, personal_ranking_revealed)
-values ('main-event', 1, 'BEFORE_START', 40, 1, 4, false)
+values ('main-event', 1, 'BEFORE_START', 31, 1, 4, false)
 on conflict (id) do update set
   year = excluded.year,
   status = excluded.status,
