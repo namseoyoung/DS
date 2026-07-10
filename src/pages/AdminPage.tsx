@@ -411,10 +411,11 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
           <section className="rounded-card bg-white p-6 shadow-soft">
             <h2 className="font-bold">회원 관리</h2>
             <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[1120px] text-left text-sm">
+              <table className="w-full min-w-[1180px] text-left text-sm">
                 <thead className="text-slate-500">
                   <tr>
                     <th>실명</th>
+                    <th>id</th>
                     <th>회사</th>
                     <th>직급</th>
                     <th>현금</th>
@@ -430,13 +431,14 @@ export function AdminPage({ state, setState, connected }: AdminPageProps) {
                   return (
                     <tbody key={company.id}>
                       <tr className="bg-slate-50">
-                        <td colSpan={9} className="py-2 text-xs font-bold text-slate-500">
+                        <td colSpan={10} className="py-2 text-xs font-bold text-slate-500">
                           {company.name} · {companyUsers.length}명
                         </td>
                       </tr>
                       {companyUsers.map((user) => (
                         <tr key={user.id} className="border-t border-slate-100">
                           <td className="py-3 font-bold">{user.realName}</td>
+                          <td className="font-mono text-xs font-bold text-slate-500">{user.id}</td>
                           <td>
                             <select
                               value={user.companyId}

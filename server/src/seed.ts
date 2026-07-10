@@ -35,6 +35,35 @@ export const salaryTable: Record<CompanyId, Record<JobRank, number>> = {
   yeil: defaultSalary,
 };
 
+const participantNames: Record<string, string> = {
+  p001: "강동훈",
+  p002: "고은빈",
+  p003: "구해원",
+  p004: "권다빈",
+  p005: "권태형",
+  p006: "김가은",
+  p007: "김민주",
+  p008: "김여경",
+  p009: "김재현",
+  p010: "김진욱",
+  p011: "류가영",
+  p012: "박유서",
+  p013: "서규민",
+  p014: "이가영",
+  p015: "이서은",
+  p016: "이지훈",
+  p017: "이해원",
+  p018: "임다슬",
+  p019: "임현우",
+  p020: "전지우",
+  p021: "정성희",
+  p022: "최민희",
+  p023: "최은주",
+  p024: "최지은",
+  p025: "최하은",
+  p026: "한지영",
+};
+
 const companyCycle: CompanyId[] = ["sanghyun", "seoyoung", "ain", "donghyun", "yeil"];
 const rankCycle: JobRank[] = ["사원", "대리", "과장", "차장", "부장"];
 
@@ -60,9 +89,10 @@ export const userSeeds: Array<{
   },
   ...Array.from({ length: 30 }, (_, index) => {
     const number = index + 1;
-    const realName = `테스트${number}`;
+    const id = `p${String(number).padStart(3, "0")}`;
+    const realName = participantNames[id] ?? `테스트${number}`;
     return {
-      id: `p${String(number).padStart(3, "0")}`,
+      id,
       password: "1111",
       nickname: realName,
       realName,
